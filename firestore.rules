@@ -1,0 +1,95 @@
+rules_version = '2';
+
+// Modelo de dados
+//   admins/{email}                          -> administradores (documento existe = admin)
+//   users/{email}                           -> cadastro do cliente (nome, ativo, criadoEm)
+//   users/{email}/lancamentos/{id}          -> receitas e despesas lançadas (cliente e admin)
+//   users/{email}/patrimonio/{id}           -> itens do patrimônio (cliente e admin)
+//   users/{email}/config/parametros         -> impostoPct e comissaoPct (somente admin)
+//   users/{email}/fluxo/{AAAA-MM}           -> legado, somente admin
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function myEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(myEmail()));
+    }
+
+    function isOwner(userEmail) {
+      return isSignedIn() && myEmail() == userEmail;
+    }
+
+    function lancamentoValido() {
+      return request.resource.data.tipo in ['receita', 'despesa']
+        && request.resource.data.valorTotal is number
+        && request.resource.data.valorTotal > 0
+        && request.resource.data.parcelas is int
+        && request.resource.data.parcelas >= 1
+        && request.resource.data.parcelas <= 360;
+    }
+
+    function patrimonioValido() {
+      return request.resource.data.valor is number
+        && request.resource.data.valor >= 0;
+    }
+
+    match /admins/{adminEmail} {
+      // Cada pessoa pode ler o próprio documento (usado para descobrir o perfil no login).
+      allow read: if isAdmin() || isOwner(adminEmail);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{userEmail} {
+      allow read: if isAdmin() || isOwner(userEmail);
+      allow create, update, delete: if isAdmin();
+
+      match /lancamentos/{id} {
+        allow read: if isAdmin() || isOwner(userEmail);
+        allow create, update: if isAdmin() || (isOwner(userEmail) && lancamentoValido());
+        allow delete: if isAdmin() || isOwner(userEmail);
+      }
+
+      match /config/aposentadoria {
+        allow read: if isAdmin() || isOwner(userEmail);
+        allow create, update: if isAdmin() || (isOwner(userEmail) && request.resource.data.rendaDesejada is number);
+      }
+
+      match /projetos/{id} {
+        allow read: if isAdmin() || isOwner(userEmail);
+        allow create, update: if isAdmin() || (isOwner(userEmail) && request.resource.data.valorTotal is number && request.resource.data.valorTotal > 0);
+        allow delete: if isAdmin() || isOwner(userEmail);
+      }
+
+      match /metas/{id} {
+        allow read: if isAdmin() || isOwner(userEmail);
+        allow create, update: if isAdmin() || (isOwner(userEmail) && request.resource.data.valorAlvo is number && request.resource.data.valorAlvo > 0);
+        allow delete: if isAdmin() || isOwner(userEmail);
+      }
+
+      match /patrimonio/{id} {
+        allow read: if isAdmin() || isOwner(userEmail);
+        allow create, update: if isAdmin() || (isOwner(userEmail) && patrimonioValido());
+        allow delete: if isAdmin() || isOwner(userEmail);
+      }
+
+      // Demais subcoleções (config, fluxo legado): leitura pelo dono, escrita só pelo admin.
+      match /{document=**} {
+        allow read: if isAdmin() || isOwner(userEmail);
+        allow write: if isAdmin();
+      }
+    }
+
+    // Qualquer outro caminho é negado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
