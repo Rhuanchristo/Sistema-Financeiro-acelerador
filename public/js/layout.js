@@ -1,7 +1,7 @@
 // Cascas de página (menu lateral com a marca + título da página) do admin, do portal do cliente e da janela de ferramenta.
 import { auth, signOut } from "./firebase.js";
 import { el } from "./ui.js";
-import { ir, hashAdmin, hashCliente, hashFerramenta } from "./router.js";
+import { ir, hashAdmin, hashCliente } from "./router.js";
 
 export const TITULOS_FERRAMENTA = {
   "open-finance": "Open Finance",
@@ -24,7 +24,7 @@ const botaoSair = () => el("button", { class: "light", onclick: () => signOut(au
 
 // Menu verde com o logo AP. No celular vira uma barra no topo com o menu rolável na horizontal;
 // depois de entrar no documento, rola o menu até o item ativo.
-function casca({ itens, quem, acoes, titulo, subtitulo, conteudo, larguraMax }) {
+function casca({ itens, quem, acoes, titulo, subtitulo, conteudo, larguraMax, voltarPara }) {
   const menu = el("nav", { class: "menu", "aria-label": "Menu" }, ...itens);
   const aside = el("aside", { class: "sidebar" },
     el("div", { class: "marca" },
@@ -47,6 +47,7 @@ function casca({ itens, quem, acoes, titulo, subtitulo, conteudo, larguraMax }) 
     el("main", { class: "conteudo", style: larguraMax ? "max-width:" + larguraMax : null },
       el("div", { class: "pagina" },
         el("div", {},
+          voltarPara ? el("button", { class: "voltar", onclick: voltarPara[1] }, voltarPara[0]) : null,
           el("h1", {}, titulo),
           subtitulo ? el("p", {}, subtitulo) : null,
         ),
@@ -89,32 +90,16 @@ export function shellPortal(ctx, secao, conteudo) {
   const voltar = ctx.modo === "admin"
     ? [item("← Clientes", false, () => ir(hashAdmin("clientes")), " menu-voltar")]
     : [];
+  // As ferramentas do Home Conect abrem aqui mesmo: o menu marca "Home Conect" e a página ganha um atalho de volta.
+  const ferramenta = TITULOS_FERRAMENTA[secao];
+  const ativo = ferramenta ? "home" : secao;
   return casca({
-    itens: [...voltar, ...itens.map(([k, l]) => item(l, k === secao, () => ir(hashCliente(ctx, k))))],
+    itens: [...voltar, ...itens.map(([k, l]) => item(l, k === ativo, () => ir(hashCliente(ctx, k))))],
     quem: ctx.user.email,
     acoes: () => [botaoSair()],
-    titulo: TITULOS_SECAO[secao] || "Painel",
+    titulo: ferramenta || TITULOS_SECAO[secao] || "Painel",
     subtitulo: ctx.modo === "admin" ? "Cliente: " + ctx.nome : "Olá, " + ctx.nome,
+    voltarPara: ferramenta ? ["← Home Conect", () => ir(hashCliente(ctx, "home"))] : null,
     conteudo,
-  });
-}
-
-// ---------- Janela de ferramenta (Home Conect) ----------
-export function shellFerramenta(ctx, tipo, conteudo) {
-  const secoes = [["dashboard", "Visão do mês"], ["lancamento", "Lançamentos"], ["receitas", "Receitas e despesas"], ["patrimonio", "Patrimônio"]];
-  const ferramentas = [["open-finance", "Open Finance"], ["metas", "Plano de metas"], ["aposentadoria", "Aposentadoria"]];
-  return casca({
-    itens: [
-      ctx.modo === "admin" ? item("← Clientes", false, () => ir(hashAdmin("clientes")), " menu-voltar") : null,
-      ...secoes.map(([k, l]) => item(l, false, () => ir(hashCliente(ctx, k)))),
-      el("div", { class: "menu-grupo" }, "Home Conect"),
-      ...ferramentas.map(([k, l]) => item(l, k === tipo, () => ir(hashFerramenta(ctx, k)))),
-    ].filter(Boolean),
-    quem: ctx.nome,
-    acoes: () => [el("button", { class: "light", onclick: () => window.close() }, "Fechar janela")],
-    titulo: TITULOS_FERRAMENTA[tipo] || "Ferramenta",
-    subtitulo: ctx.modo === "admin" ? "Cliente: " + ctx.nome : null,
-    conteudo,
-    larguraMax: "1100px",
   });
 }

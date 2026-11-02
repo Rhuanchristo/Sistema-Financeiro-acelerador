@@ -31,7 +31,7 @@ Toda navegação é feita pelo hash da URL (o botão Voltar e o F5 funcionam):
 - Cliente: `#/dashboard`, `#/lancamento`, `#/receitas`, `#/patrimonio`, `#/home`, `#/relatorio`
 - Administrador: `#/admin/clientes`, `#/admin/dashboard`, `#/admin/oportunidade`
 - Administrador vendo um cliente: `#/cliente/{e-mail codificado}/{seção}`
-- Ferramentas (abrem em nova janela): `#/ferramenta/{open-finance|metas|aposentadoria}`, com `?cliente={e-mail}` quando aberta pelo administrador
+- Ferramentas do Home Conect (abrem na mesma página): `#/metas`, `#/aposentadoria`, `#/open-finance`; o administrador usa `#/cliente/{e-mail}/{ferramenta}`. Links antigos `#/ferramenta/...` são redirecionados.
 
 No código, navegue com `ir(hash)` e redesenhe a tela atual com `recarregar()` (ambos em `js/router.js`).
 

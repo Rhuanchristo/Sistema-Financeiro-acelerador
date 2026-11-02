@@ -4,13 +4,14 @@
 //   cliente:            #/dashboard  #/lancamento  #/receitas  #/patrimonio  #/home  #/relatorio
 //   admin:              #/admin/clientes  #/admin/dashboard  #/admin/oportunidade
 //   admin vê cliente:   #/cliente/{email codificado}/{secao}
-//   ferramenta:         #/ferramenta/{tipo}[?cliente={email codificado}]   (abre em nova janela)
+//   ferramentas:        #/metas  #/aposentadoria  #/open-finance  (Home Conect, na mesma página; admin usa #/cliente/{email}/{tipo})
+//   formato antigo:     #/ferramenta/{tipo}[?cliente=...] é redirecionado para a seção equivalente
 // Para navegar use ir(hash). Para redesenhar a rota atual (ex.: após salvar) use recarregar().
 import { auth, db, doc, getDoc, updateDoc, onAuthStateChanged } from "./firebase.js";
 import { emailKey, ANO_ATUAL } from "./format.js";
 import { el, setView } from "./ui.js";
 import { carregarLancamentos, carregarParametros, carregarPatrimonio } from "./data.js";
-import { shellAdmin, shellPortal, shellFerramenta } from "./layout.js";
+import { shellAdmin, shellPortal } from "./layout.js";
 import { renderLogin, renderNegado } from "./views/login.js";
 import { telaDashboard, desenharGrafico } from "./views/dashboard.js";
 import { telaLancamento } from "./views/lancamento.js";
@@ -23,7 +24,8 @@ import { montarClientes, montarConsolidado } from "./views/admin.js";
 import { telaOportunidade } from "./views/oportunidade.js";
 import { telaRelatorio } from "./views/relatorio.js";
 
-export const SECOES_CLIENTE = ["dashboard", "lancamento", "receitas", "patrimonio", "home", "relatorio"];
+export const FERRAMENTAS = ["metas", "aposentadoria", "open-finance"];
+export const SECOES_CLIENTE = ["dashboard", "lancamento", "receitas", "patrimonio", "home", "relatorio", ...FERRAMENTAS];
 export const SECOES_ADMIN = ["clientes", "dashboard", "oportunidade"];
 
 const MSG_SEM_ACESSO = "Este e-mail não tem acesso ao sistema. Fale com o administrador.";
@@ -42,8 +44,8 @@ export const perfilAtual = () => perfil;
 export const hashAdmin = (secao = "clientes") => "#/admin/" + secao;
 export const hashCliente = (ctx, secao) =>
   ctx.modo === "admin" ? "#/cliente/" + encodeURIComponent(ctx.email) + "/" + secao : "#/" + secao;
-export const hashFerramenta = (ctx, tipo) =>
-  "#/ferramenta/" + tipo + (ctx.modo === "admin" ? "?cliente=" + encodeURIComponent(ctx.email) : "");
+// As ferramentas do Home Conect abrem na mesma página, como as demais seções.
+export const hashFerramenta = (ctx, tipo) => hashCliente(ctx, tipo);
 
 const decodificar = (s) => {
   try { return emailKey(decodeURIComponent(s)); } catch { return null; }
@@ -56,14 +58,14 @@ export function lerRota(hash = location.hash) {
     return { tipo: "ferramenta", ferramenta: m[1], cliente: m[2] ? decodificar(m[2]) : null };
   }
   if ((m = h.match(/^\/admin\/([a-z]+)$/)) && SECOES_ADMIN.includes(m[1])) return { tipo: "admin", secao: m[1] };
-  if ((m = h.match(/^\/cliente\/([^/?]+)\/([a-z]+)$/)) && SECOES_CLIENTE.includes(m[2]) && decodificar(m[1])) {
+  if ((m = h.match(/^\/cliente\/([^/?]+)\/([a-z-]+)$/)) && SECOES_CLIENTE.includes(m[2]) && decodificar(m[1])) {
     return { tipo: "clienteAdmin", email: decodificar(m[1]), secao: m[2] };
   }
   // Formato antigo: #/secao/{nome}[?cliente=email]
   if ((m = h.match(/^\/secao\/([a-z]+)(?:\?cliente=(.+))?$/)) && SECOES_CLIENTE.includes(m[1])) {
     return m[2] && decodificar(m[2]) ? { tipo: "clienteAdmin", email: decodificar(m[2]), secao: m[1] } : { tipo: "cliente", secao: m[1] };
   }
-  if ((m = h.match(/^\/([a-z]+)$/)) && SECOES_CLIENTE.includes(m[1])) return { tipo: "cliente", secao: m[1] };
+  if ((m = h.match(/^\/([a-z-]+)$/)) && SECOES_CLIENTE.includes(m[1])) return { tipo: "cliente", secao: m[1] };
   return { tipo: "inicio" };
 }
 
@@ -152,7 +154,14 @@ async function renderizar() {
 
   const rota = lerRota();
   try {
-    if (rota.tipo === "ferramenta") return await renderFerramenta(rota, token);
+    // Links antigos de ferramenta (abriam em nova janela) viram a seção equivalente no portal.
+    if (rota.tipo === "ferramenta") {
+      const tipo = FERRAMENTAS.includes(rota.ferramenta) ? rota.ferramenta : "home";
+      if (perfil.tipo === "admin") {
+        return redirecionar(rota.cliente ? "#/cliente/" + encodeURIComponent(rota.cliente) + "/" + tipo : hashAdmin("clientes"));
+      }
+      return redirecionar("#/" + tipo);
+    }
     if (perfil.tipo === "admin") {
       if (rota.tipo === "admin") return await renderAdmin(rota.secao);
       if (rota.tipo === "clienteAdmin") {
@@ -184,6 +193,15 @@ async function renderPortal(ctx, secao, token) {
   const slot = carregando();
   setView(shellPortal(ctx, secao, slot));
 
+  // Ferramentas do Home Conect carregam os próprios dados.
+  if (secao === "metas") {
+    const tela = await telaMetas(ctx);
+    if (token === seq) slot.replaceChildren(tela);
+    return;
+  }
+  if (secao === "aposentadoria") return montarAposentadoria(ctx, slot);
+  if (secao === "open-finance") return slot.replaceChildren(telaOpenFinance());
+
   const [lancamentos, params, patrimonio] = await Promise.all([
     carregarLancamentos(ctx.email),
     carregarParametros(ctx.email),
@@ -199,28 +217,6 @@ async function renderPortal(ctx, secao, token) {
   if (secao === "relatorio") return slot.replaceChildren(telaRelatorio(ctx, dados));
   slot.replaceChildren(telaDashboard(ctx, dados));
   desenharGrafico(ctx, dados);
-}
-
-async function renderFerramenta(rota, token) {
-  let ctx;
-  if (perfil.tipo === "admin") {
-    if (!rota.cliente) return renderNegado("Abra esta ferramenta pelo painel de um cliente.");
-    ctx = await contextoCliente(rota.cliente);
-    if (token !== seq) return;
-  } else {
-    ctx = contextoProprio();
-  }
-  const tipo = rota.ferramenta;
-  const slot = carregando();
-  setView(shellFerramenta(ctx, tipo, slot));
-
-  if (tipo === "metas") {
-    const tela = await telaMetas(ctx);
-    if (token === seq) slot.replaceChildren(tela);
-    return;
-  }
-  if (tipo === "aposentadoria") return montarAposentadoria(ctx, slot);
-  slot.replaceChildren(telaOpenFinance());
 }
 
 // ---------- Início ----------

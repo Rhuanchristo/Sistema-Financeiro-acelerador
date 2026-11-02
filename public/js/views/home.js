@@ -1,33 +1,32 @@
-// Home Conect: cartões das ferramentas (abrem em nova janela) e tela do Open Finance.
+// Home Conect: cartões das ferramentas (abrem na mesma página) e tela do Open Finance.
 import { el } from "../ui.js";
-import { hashFerramenta } from "../router.js";
+import { ir, hashFerramenta } from "../router.js";
 
 export function abrirFerramenta(ctx, tipo) {
-  window.open(window.location.origin + "/" + hashFerramenta(ctx, tipo), "_blank", "noopener");
+  ir(hashFerramenta(ctx, tipo));
 }
 
 export function telaHome(ctx) {
   const cartoes = [
-    ["open-finance", "Open Finance", "Conexão com contas bancárias para importar lançamentos e saldos.", "Em breve"],
-    ["metas", "Plano de metas", "Defina objetivos financeiros e veja quanto poupar por mês para alcançá-los."],
-    ["aposentadoria", "Planejamento de aposentadoria", "Estime o capital necessário e o aporte mensal para a renda desejada."],
+    ["metas", "Plano de metas", "Defina objetivos financeiros e veja quanto poupar por mês para alcançá-los.", "Abrir plano de metas"],
+    ["aposentadoria", "Planejamento de aposentadoria", "Estime o capital necessário e o aporte mensal para a renda desejada.", "Abrir planejamento"],
+    ["open-finance", "Open Finance", "Conexão com contas bancárias para importar lançamentos e saldos.", "Ver detalhes", "Em breve"],
   ];
-  return el("div", {},
-    el("p", { class: "muted" }, "Cada ferramenta abre em uma nova janela."),
-    el("div", { class: "kpis" }, cartoes.map(([tipo, titulo, desc, aviso]) => el("section", { class: "card", style: "margin:0" },
-      el("h2", {}, titulo),
-      el("p", { class: "muted" }, desc),
-      aviso ? el("p", {}, el("span", { class: "badge off" }, aviso)) : null,
-      el("button", { onclick: () => abrirFerramenta(ctx, tipo) }, "Abrir em nova janela"),
-    ))),
-  );
+  return el("div", { class: "ferramentas" }, cartoes.map(([tipo, titulo, desc, acao, aviso]) =>
+    el("section", { class: "card ferramenta" },
+      el("div", {},
+        el("h2", {}, titulo, aviso ? el("span", { class: "badge off" }, aviso) : null),
+        el("p", { class: "muted" }, desc),
+      ),
+      el("button", { class: aviso ? "ghost" : null, onclick: () => abrirFerramenta(ctx, tipo) }, acao),
+    )));
 }
 
 export function telaOpenFinance() {
   return el("section", { class: "card" },
     el("h2", {}, "Conexão com contas bancárias"),
     el("p", {}, "Em breve: conexão via Open Finance para importar lançamentos e saldos automaticamente."),
-    el("p", { class: "muted" }, "Enquanto isso, os lançamentos continuam sendo feitos manualmente na aba Lançamento."),
+    el("p", { class: "muted" }, "Enquanto isso, os lançamentos continuam sendo feitos manualmente na aba Lançamentos."),
     el("button", { disabled: true }, "Conectar banco (em breve)"),
   );
 }
