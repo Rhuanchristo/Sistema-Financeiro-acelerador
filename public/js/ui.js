@@ -20,6 +20,31 @@ export function setView(node) {
   document.getElementById("app").replaceChildren(node);
 }
 
+// No celular cada linha de tabela vira um cartão, e cada célula mostra o título da sua coluna (CSS usa data-label).
+// Tabelas largas de mês a mês (12+ colunas) recebem a classe "matriz" e continuam rolando de lado.
+export function rotularTabelas(raiz) {
+  for (const tabela of raiz.querySelectorAll("table")) {
+    const cab = tabela.tHead?.rows[tabela.tHead.rows.length - 1];
+    if (!cab) continue;
+    const titulos = [];
+    for (const th of cab.cells) {
+      const txt = th.textContent.trim();
+      for (let i = 0; i < (th.colSpan || 1); i++) titulos.push(txt);
+    }
+    if (titulos.length >= 12) { tabela.classList.add("matriz"); continue; }
+    tabela.classList.add("empilha");
+    for (const tbody of tabela.tBodies) {
+      for (const tr of tbody.rows) {
+        let col = 0;
+        for (const td of tr.cells) {
+          if (!td.hasAttribute("data-label")) td.setAttribute("data-label", td.colSpan > 1 ? "" : titulos[col] || "");
+          col += td.colSpan || 1;
+        }
+      }
+    }
+  }
+}
+
 export function kpi(rotulo, valor, fmt = brl) {
   return el("div", { class: "kpi" }, el("span", {}, rotulo), el("strong", {}, fmt(valor)));
 }

@@ -45,7 +45,7 @@
     .sidebar-rodape .acoes { display:flex; gap:8px; flex-wrap:wrap; }
     .sidebar-rodape-celular { display:none; }
 
-    .conteudo { padding:44px 56px 64px; min-width:0; max-width:1240px; width:100%; }
+    .conteudo { padding:44px 40px 64px; min-width:0; max-width:1240px; width:100%; }
     .pagina { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:28px; }
     .pagina h1 { font:500 40px/1.1 var(--serif); color:var(--verde-profundo); margin:0; letter-spacing:-.005em; }
     .pagina p { margin:6px 0 0; color:var(--cinza-texto); }
@@ -71,7 +71,15 @@
 
     /* ---------- Tabelas ---------- */
     table { width:100%; border-collapse:collapse; font-size:13.5px; }
-    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--areia); white-space:nowrap; }
+    /* Textos quebram linha para a tabela caber na tela; valores, datas e botões ficam numa linha só. */
+    th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--areia); white-space:normal; vertical-align:middle; }
+    th:first-child, td:first-child { padding-left:0; }
+    th:last-child, td:last-child { padding-right:0; }
+    td.num, th.num, td:has(> button), td:has(> div > button), td:has(> input[type="checkbox"]) { white-space:nowrap; }
+    table.matriz th, table.matriz td { white-space:nowrap; }
+    td > button + button, td > div > button + button { margin-left:6px; }
+    td button { padding:6px 11px; font-size:13px; }
+    input[type="checkbox"], input[type="radio"] { min-width:0; width:auto; padding:0; }
     th { color:var(--cinza-texto); font-weight:500; font-size:12px; border-bottom-color:var(--linha); }
     td.num, th.num { text-align:right; font-variant-numeric:lining-nums tabular-nums; }
     tbody tr:hover td { background:color-mix(in srgb, var(--areia) 45%, transparent); }
@@ -140,6 +148,7 @@
       h2 { font-size:21px; }
       .kpis { grid-template-columns:repeat(2, minmax(0,1fr)); }
       .kpi { padding:14px 14px 12px; }
+      .kpi:last-child:nth-child(odd) { grid-column:1 / -1; }
       .kpi strong { font-size:22px; }
       .conteudo [style*="grid-template-columns"] { grid-template-columns:minmax(0,1fr) !important; }
 
@@ -162,6 +171,46 @@
       .entrada-marca img { height:42px; }
       .entrada-marca small { display:none; }
       .entrada-form { align-items:flex-start; padding:32px 22px; }
+    }
+
+    /* ---------- Tablet (768 a 1099px): menu mais estreito e respiro menor ---------- */
+    @media (min-width: 768px) and (max-width: 1099px) {
+      .app { grid-template-columns:208px minmax(0,1fr); }
+      .sidebar { padding:24px 12px 18px; }
+      .marca img { height:38px; }
+      .conteudo { padding:32px 28px 48px; }
+      .pagina h1 { font-size:34px; }
+      .conteudo [style*="grid-template-columns"] { grid-template-columns:minmax(0,1fr) !important; }
+      .entrada-marca { padding:44px 40px; }
+    }
+
+    /* ---------- Até 1279px: tabelas viram cartões, com quantas colunas couberem ---------- */
+    @media (max-width: 1279px) {
+      table.empilha, table.empilha tbody { display:block; width:100%; }
+      table.empilha thead { display:none; }
+      /* Cada linha vira um cartão em 2 colunas, com o rótulo em cima do valor. */
+      table.empilha tr { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px 16px; padding:14px 0; border-bottom:1px solid var(--areia); }
+      table.empilha tbody tr:hover td { background:transparent; }
+      table.empilha td { display:block; padding:0; border:0; white-space:normal; text-align:left; overflow-wrap:anywhere; min-width:0; }
+      table.empilha td::before { content:attr(data-label); display:block; font-size:11.5px; color:var(--cinza-texto); margin-bottom:1px; }
+      table.empilha td[data-label=""] { grid-column:1 / -1; }
+      table.empilha td[data-label=""]::before { content:none; }
+      table.empilha td:empty { display:none; }
+      table.empilha td button { min-height:40px; }
+      /* Ações, caixas de seleção e linhas de grupo ocupam a largura toda. */
+      table.empilha td:has(> button), table.empilha td:has(> div > button) { grid-column:1 / -1; display:flex; justify-content:flex-end; gap:8px; }
+      table.empilha td:has(> button)::before, table.empilha td:has(> div > button)::before { content:none; }
+      table.empilha td > div:has(> button) { display:flex !important; flex-direction:row !important; flex-wrap:wrap; gap:8px; justify-content:flex-end; width:100% !important; }
+      table.empilha td > div:has(> button) > *, table.empilha td > button { width:auto !important; margin:0 !important; }
+      table.empilha td:has(> input[type="checkbox"]) { grid-column:1 / -1; }
+      table.empilha td:has(> input[type="checkbox"])::before { content:none; }
+      table.empilha tr:has(> td[colspan]) { display:block; padding:10px 0; }
+      table.empilha tr.total { border-bottom:0; border-top:1px solid var(--verde-profundo); margin-top:4px; }
+      table.empilha tr.total td { border:0; font-weight:600; }
+      section.card:has(table.empilha), .scroll:has(table.empilha) { overflow-x:visible; }
+
+      /* Grade mês a mês: continua rolando de lado, com a coluna da categoria fixa. */
+      table.matriz th:first-child, table.matriz td:first-child { position:sticky; left:0; z-index:1; background:var(--card); box-shadow:1px 0 0 var(--linha); }
     }
   </style>
   <link rel="stylesheet" href="./css/print.css" media="print" />
