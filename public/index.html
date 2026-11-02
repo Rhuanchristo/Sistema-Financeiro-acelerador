@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#132721" />
+  <meta name="color-scheme" content="light" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <title>Financeiro & Patrimônio · AP</title>
+  <link rel="icon" href="./img/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap" />
+  <style>
+    /* Marca AP/ARKA: verde profundo, off-white e dourado discreto (mesma do Wealth Insight Planner). */
+    :root {
+      --verde-profundo:#132721; --verde:#2C4A3E; --verde-claro:#8FA89B;
+      --offwhite:#F5F0E8; --areia:#ECE7DE; --linha:#DDD6CA;
+      --dourado:#C9A96E; --carvao:#2A2A2A; --cinza:#8A8580; --cinza-texto:#6E6A65;
+      --vermelho:#B0413E; --vermelho-fundo:#F3E1DF; --verde-fundo:#E3EBE6;
+      --card:#FFFFFF;
+      --serif:"Cormorant Garamond", Georgia, serif;
+      --sans:"Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --raio:6px;
+      /* Nomes antigos, ainda usados por estilos inline das telas. */
+      --accent:var(--verde-profundo); --danger:var(--vermelho); --line:var(--linha); --muted:var(--cinza-texto); --ink:var(--carvao);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:var(--sans); font-size:14px; line-height:1.5; background:var(--offwhite); color:var(--carvao); -webkit-font-smoothing:antialiased; }
+    ::selection { background:color-mix(in srgb, var(--dourado) 35%, transparent); color:var(--verde-profundo); }
+
+    /* ---------- Estrutura: menu verde à esquerda, página à direita ---------- */
+    .app { display:grid; grid-template-columns:248px minmax(0,1fr); min-height:100vh; }
+    .sidebar { background:var(--verde-profundo); color:var(--offwhite); display:flex; flex-direction:column; padding:28px 16px 20px; position:sticky; top:0; height:100vh; overflow-y:auto; }
+    .marca { display:block; padding:0 8px 28px; }
+    .marca img { display:block; height:44px; width:auto; }
+    .menu { display:flex; flex-direction:column; gap:2px; }
+    .menu-item { display:block; width:100%; text-align:left; background:transparent; color:color-mix(in srgb, var(--offwhite) 72%, transparent); border:0; border-left:2px solid transparent; border-radius:0 var(--raio) var(--raio) 0; font:400 14px/1.4 var(--sans); padding:10px 14px; cursor:pointer; }
+    .menu-item:hover { color:var(--offwhite); background:color-mix(in srgb, var(--verde) 55%, transparent); }
+    .menu-item.ativo { color:var(--offwhite); background:var(--verde); border-left-color:var(--dourado); font-weight:500; }
+    .menu-voltar { color:var(--dourado); }
+    .menu-grupo { font-size:12px; color:var(--verde-claro); padding:18px 14px 6px; }
+    .sidebar-rodape { margin-top:auto; padding:20px 8px 0; border-top:1px solid color-mix(in srgb, var(--offwhite) 14%, transparent); display:flex; flex-direction:column; gap:10px; }
+    .sidebar-rodape .quem { font-size:12px; color:var(--verde-claro); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sidebar-rodape .acoes { display:flex; gap:8px; flex-wrap:wrap; }
+    .sidebar-rodape-celular { display:none; }
+
+    .conteudo { padding:44px 56px 64px; min-width:0; max-width:1240px; width:100%; }
+    .pagina { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:28px; }
+    .pagina h1 { font:500 40px/1.1 var(--serif); color:var(--verde-profundo); margin:0; letter-spacing:-.005em; }
+    .pagina p { margin:6px 0 0; color:var(--cinza-texto); }
+
+    /* ---------- Tipografia ---------- */
+    h1, h2 { font-family:var(--serif); font-weight:500; color:var(--verde-profundo); text-wrap:balance; }
+    h2 { font-size:24px; line-height:1.2; margin:0 0 16px; }
+    h3 { font:600 13px/1.4 var(--sans); color:var(--verde); margin:22px 0 10px; }
+    p { text-wrap:pretty; }
+    .muted { color:var(--cinza-texto); font-size:13px; }
+    .msg { color:var(--vermelho); font-size:14px; margin:10px 0; }
+
+    /* ---------- Superfícies ---------- */
+    section.card { background:var(--card); border:1px solid var(--linha); border-radius:var(--raio); padding:24px; margin-bottom:20px; }
+    .scroll { overflow-x:auto; }
+
+    /* Os valores em dinheiro são o destaque: serifa da marca com algarismos alinhados. */
+    .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:0; background:var(--card); border:1px solid var(--linha); border-radius:var(--raio); overflow:hidden; margin-bottom:24px; }
+    /* Linhas internas desenhadas por cada indicador: uma última linha incompleta fica limpa. */
+    .kpi { background:var(--card); padding:18px 20px 16px; min-width:0; box-shadow:1px 0 0 var(--linha), 0 1px 0 var(--linha); }
+    .kpi span { display:block; font-size:12px; color:var(--cinza-texto); margin-bottom:6px; }
+    .kpi strong { display:block; font:500 30px/1.1 var(--serif); color:var(--verde-profundo); font-variant-numeric:lining-nums tabular-nums; overflow-wrap:anywhere; }
+
+    /* ---------- Tabelas ---------- */
+    table { width:100%; border-collapse:collapse; font-size:13.5px; }
+    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--areia); white-space:nowrap; }
+    th { color:var(--cinza-texto); font-weight:500; font-size:12px; border-bottom-color:var(--linha); }
+    td.num, th.num { text-align:right; font-variant-numeric:lining-nums tabular-nums; }
+    tbody tr:hover td { background:color-mix(in srgb, var(--areia) 45%, transparent); }
+    tr.total td { font-weight:600; color:var(--verde-profundo); border-top:1px solid var(--verde-profundo); border-bottom:0; }
+
+    /* ---------- Formulários e botões ---------- */
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:14px; }
+    label { display:flex; flex-direction:column; font-size:12px; color:var(--cinza-texto); gap:5px; }
+    input, select, textarea { font:400 14px var(--sans); color:var(--carvao); padding:9px 11px; border:1px solid var(--linha); border-radius:var(--raio); background:var(--card); min-width:120px; }
+    input:focus, select:focus, textarea:focus { border-color:var(--dourado); outline:none; box-shadow:0 0 0 3px color-mix(in srgb, var(--dourado) 25%, transparent); }
+    input.num { text-align:right; width:110px; min-width:0; font-variant-numeric:tabular-nums; }
+    button { font:500 14px var(--sans); padding:9px 16px; border:1px solid var(--verde-profundo); border-radius:var(--raio); background:var(--verde-profundo); color:var(--offwhite); cursor:pointer; }
+    button:hover { background:var(--verde); border-color:var(--verde); }
+    button.ghost { background:transparent; color:var(--verde-profundo); border-color:var(--linha); }
+    button.ghost:hover { border-color:var(--verde-profundo); background:var(--card); }
+    button.danger { background:transparent; color:var(--vermelho); border-color:color-mix(in srgb, var(--vermelho) 40%, transparent); }
+    button.danger:hover { background:var(--vermelho); color:var(--offwhite); border-color:var(--vermelho); }
+    button.light { background:transparent; color:var(--offwhite); border-color:color-mix(in srgb, var(--offwhite) 35%, transparent); font-size:13px; padding:7px 12px; }
+    button.light:hover { border-color:var(--dourado); color:var(--dourado); background:transparent; }
+    button:disabled { opacity:.55; cursor:wait; }
+    :focus-visible { outline:2px solid var(--dourado); outline-offset:2px; }
+
+    .badge { display:inline-block; font-size:11.5px; font-weight:500; padding:2px 9px; border-radius:99px; background:var(--verde-fundo); color:var(--verde); }
+    .badge.off { background:var(--vermelho-fundo); color:var(--vermelho); }
+
+    /* ---------- Entrada (login / acesso negado) ---------- */
+    .entrada { min-height:100vh; display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); }
+    .entrada-marca { background:var(--verde-profundo); color:var(--offwhite); padding:56px 64px; display:flex; flex-direction:column; justify-content:space-between; gap:48px; }
+    .entrada-marca img { height:64px; width:auto; align-self:flex-start; }
+    .entrada-marca h1 { font:400 clamp(40px, 5vw, 64px)/1.05 var(--serif); color:var(--offwhite); margin:0; max-width:12ch; }
+    .entrada-marca p { color:var(--verde-claro); max-width:40ch; margin:18px 0 0; font-size:15px; }
+    .entrada-marca small { color:var(--verde-claro); font-size:12px; }
+    .entrada-form { display:flex; align-items:center; justify-content:center; padding:48px 24px; }
+    .login { width:100%; max-width:360px; }
+    .login h2 { font-size:32px; margin:0 0 8px; }
+    .login p { margin:0 0 28px; color:var(--cinza-texto); }
+    .login button { width:100%; padding:13px 16px; font-size:15px; }
+    .center { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+
+    .topo-acoes { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:0; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .entrada-marca h1, .entrada-marca p { animation:surgir .6s ease-out both; }
+      .entrada-marca p { animation-delay:.12s; }
+      @keyframes surgir { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    }
+
+    /* ---------- Celular (abaixo de 768px): o cliente usa muito pelo telefone ---------- */
+    @media (max-width: 767px) {
+      .app { grid-template-columns:minmax(0,1fr); }
+      .sidebar { position:sticky; top:0; z-index:10; height:auto; padding:12px 0 0; overflow:visible; }
+      .marca { padding:0 16px 8px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .marca img { height:30px; }
+      .sidebar-rodape-celular { display:flex; }
+      .menu { flex-direction:row; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:0 12px; }
+      .menu::-webkit-scrollbar { display:none; }
+      .menu-item { width:auto; flex-shrink:0; white-space:nowrap; border-left:0; border-bottom:2px solid transparent; border-radius:0; padding:10px 12px 11px; min-height:44px; }
+      .menu-item.ativo { background:transparent; border-bottom-color:var(--dourado); }
+      .menu-grupo { flex-shrink:0; white-space:nowrap; padding:13px 6px 0 14px; border-left:1px solid color-mix(in srgb, var(--offwhite) 18%, transparent); }
+      .sidebar-rodape { display:none; }
+
+      .conteudo { padding:22px 16px 48px; max-width:none !important; margin:0 !important; }
+      .pagina { margin-bottom:18px; }
+      .pagina h1 { font-size:30px; }
+      section.card { padding:16px; overflow-x:auto; }
+      h2 { font-size:21px; }
+      .kpis { grid-template-columns:repeat(2, minmax(0,1fr)); }
+      .kpi { padding:14px 14px 12px; }
+      .kpi strong { font-size:22px; }
+      .conteudo [style*="grid-template-columns"] { grid-template-columns:minmax(0,1fr) !important; }
+
+      .row { flex-direction:column; align-items:stretch; }
+      .row > *, .row label, .row input, .row select, .row textarea { width:100% !important; min-width:0 !important; max-width:100%; }
+      .row > button, .row > label > button { width:100%; }
+      .row input[type="checkbox"], .row input[type="radio"] { width:auto !important; }
+      .topo-acoes.row { flex-direction:row; align-items:center; }
+      table input, table select { min-width:0 !important; }
+      button, input, select, textarea { min-height:44px; }
+      .sidebar button.light { min-height:36px; }
+      input, select, textarea { font-size:16px; }
+      input[type="checkbox"], input[type="radio"] { min-height:0; width:22px; height:22px; }
+
+      .modal-fundo { padding:0 !important; align-items:flex-end !important; }
+      .modal-card { padding:20px 16px !important; max-height:94vh !important; border-radius:14px 14px 0 0 !important; }
+
+      .entrada { grid-template-columns:minmax(0,1fr); }
+      .entrada-marca { padding:32px 22px 36px; gap:28px; }
+      .entrada-marca img { height:42px; }
+      .entrada-marca small { display:none; }
+      .entrada-form { align-items:flex-start; padding:32px 22px; }
+    }
+  </style>
+  <link rel="stylesheet" href="./css/print.css" media="print" />
+</head>
+<body>
+  <div id="app"></div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -3,5 +3,3 @@ node_modules/
 .*.js
 *.backup.js
 *.log
-package.json
-package-lock.json
