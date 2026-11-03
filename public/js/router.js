@@ -16,7 +16,7 @@ import { renderLogin, renderNegado } from "./views/login.js";
 import { telaDashboard, desenharGrafico } from "./views/dashboard.js";
 import { telaLancamento } from "./views/lancamento.js";
 import { telaReceitas } from "./views/receitas.js";
-import { telaPatrimonio } from "./views/patrimonio.js";
+import { telaMeuPatrimonio } from "./views/meu-patrimonio.js";
 import { telaHome, telaOpenFinance } from "./views/home.js";
 import { telaMetas } from "./views/metas.js";
 import { montarAposentadoria } from "./views/aposentadoria.js";
@@ -213,7 +213,7 @@ async function renderPortal(ctx, secao, token) {
   if (secao === "home") return slot.replaceChildren(telaHome(ctx));
   if (secao === "lancamento") return slot.replaceChildren(telaLancamento(ctx, dados));
   if (secao === "receitas") return slot.replaceChildren(telaReceitas(ctx, dados));
-  if (secao === "patrimonio") return slot.replaceChildren(telaPatrimonio(ctx, dados));
+  if (secao === "patrimonio") return slot.replaceChildren(telaMeuPatrimonio(ctx, dados));
   if (secao === "relatorio") return slot.replaceChildren(telaRelatorio(ctx, dados));
   slot.replaceChildren(telaDashboard(ctx, dados));
   desenharGrafico(ctx, dados);

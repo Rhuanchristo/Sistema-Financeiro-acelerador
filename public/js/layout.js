@@ -13,7 +13,7 @@ const TITULOS_SECAO = {
   dashboard: "Visão do mês",
   lancamento: "Lançamentos",
   receitas: "Receitas e despesas",
-  patrimonio: "Patrimônio",
+  patrimonio: "Meu Patrimônio",
   relatorio: "Relatório mensal",
   home: "Home Conect",
   clientes: "Clientes",
@@ -83,7 +83,7 @@ export function shellPortal(ctx, secao, conteudo) {
     ["dashboard", "Visão do mês"],
     ["lancamento", "Lançamentos"],
     ["receitas", "Receitas e despesas"],
-    ["patrimonio", "Patrimônio"],
+    ["patrimonio", "Meu Patrimônio"],
     ["relatorio", "Relatório"],
     ["home", "Home Conect"],
   ];

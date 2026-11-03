@@ -13,7 +13,9 @@ export const CATEGORIAS_PATRIMONIO = [
   ["veiculos", "Veículo", "ativo"],
   ["investimentos", "Investimento", "ativo"],
   ["empresas", "Empresa / participação", "ativo"],
-  ["dividas", "Dívida", "divida"],
+  ["financiamento", "Financiamento", "divida"],
+  ["dividas", "Empréstimo / dívida", "divida"],
+  ["milhas", "Milhas", "ativo"],
 ];
 
 // ---------- Lançamentos ----------
