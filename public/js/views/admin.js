@@ -1,12 +1,12 @@
 // Painel do administrador: clientes, administradores e visão consolidada.
 import {
-  db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs,
+  db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, writeBatch,
   collectionGroup, query, orderBy, limit,
 } from "../firebase.js";
 import { brl, num, soma, emailKey, mesAtual } from "../format.js";
 import { resumoAno, entidadeDe, projetar, PARAMS_APOSENT, PARAMETROS_PF } from "../calc.js";
-import { carregarUsuarios, carregarParametros, excluirDadosUsuario } from "../data.js";
-import { el, kpi, acao } from "../ui.js";
+import { carregarUsuarios, carregarParametros, excluirDadosUsuario, SUBCOLECOES_USUARIO } from "../data.js";
+import { el, kpi, acao, abrirModal, toast } from "../ui.js";
 import { ir, recarregar } from "../router.js";
 
 const URL_SISTEMA = "https://dashboard-financeiro-faaa2.web.app";
@@ -121,6 +121,7 @@ export async function montarClientes(user, conteudo) {
       celulaData(u.ultimoAcesso, "Nunca acessou"),
       celulaData(ultimoLanc.get(u.email), "Nenhum lançamento"),
       el("td", {}, el("div", { class: "row", style: "margin:0" },
+        el("button", { class: "ghost", onclick: () => abrirEdicaoUsuario(u) }, "Editar"),
         el("button", { class: "ghost", onclick: () => abrirEditorUsuario(u) }, "Abrir painel"),
         el("button", {
           class: "ghost",
@@ -193,6 +194,71 @@ export async function montarClientes(user, conteudo) {
       el("h2", {}, "Administradores"),
       listaAdmins,
       formNovoAdmin,
+    ),
+  );
+}
+
+// ---------- Edição de cadastro (nome e e-mail) ----------
+// Trocar o e-mail move o cadastro e todos os dados para o novo e-mail. Copia tudo primeiro e só apaga
+// o cadastro antigo depois que a cópia foi gravada, então um erro no meio não perde dados.
+async function migrarEmail(antigo, novo, nome) {
+  const destino = await getDoc(doc(db, "users", novo));
+  if (destino.exists()) throw new Error("Já existe um usuário com o e-mail " + novo + ".");
+  const origem = await getDoc(doc(db, "users", antigo));
+  if (!origem.exists()) throw new Error("O cadastro antigo não existe mais. Recarregue a página.");
+
+  const copias = [[doc(db, "users", novo), { ...origem.data(), email: novo, nome }]];
+  const apagar = [doc(db, "users", antigo)];
+  for (const sub of SUBCOLECOES_USUARIO) {
+    const snap = await getDocs(collection(db, "users", antigo, sub));
+    for (const d of snap.docs) {
+      copias.push([doc(db, "users", novo, sub, d.id), d.data()]);
+      apagar.push(d.ref);
+    }
+  }
+  for (let i = 0; i < copias.length; i += 400) {
+    const lote = writeBatch(db);
+    for (const [ref, dados] of copias.slice(i, i + 400)) lote.set(ref, dados);
+    await lote.commit();
+  }
+  for (let i = 0; i < apagar.length; i += 400) {
+    const lote = writeBatch(db);
+    for (const ref of apagar.slice(i, i + 400)) lote.delete(ref);
+    await lote.commit();
+  }
+}
+
+function abrirEdicaoUsuario(u) {
+  const nome = el("input", { type: "text", value: u.nome || "", style: "min-width:260px" });
+  const email = el("input", { type: "email", value: u.email, style: "min-width:260px" });
+  const modal = abrirModal({ titulo: "Editar usuário", largura: 560 });
+  const salvar = async () => {
+    const novoNome = nome.value.trim();
+    const novoEmail = emailKey(email.value);
+    if (!novoEmail.includes("@")) return alert("Informe um e-mail válido.");
+    const trocou = novoEmail !== u.email;
+    if (trocou && !confirm("Trocar o e-mail de " + u.email + " para " + novoEmail + "? Todos os dados serão movidos. O cliente precisará entrar com o novo e-mail.")) return;
+    try {
+      if (trocou) await migrarEmail(u.email, novoEmail, novoNome);
+      else await updateDoc(doc(db, "users", u.email), { nome: novoNome });
+    } catch (err) {
+      console.error(err);
+      toast(err.message && err.message.startsWith("Já existe") ? err.message : "Não foi possível salvar. Nada foi apagado; tente de novo.", 6000);
+      return;
+    }
+    toast("Cadastro atualizado.");
+    modal.fechar();
+    recarregar();
+  };
+  modal.trocar(
+    el("div", { class: "row" },
+      el("label", {}, "Nome", nome),
+      el("label", {}, "E-mail Google", email),
+    ),
+    el("p", { class: "muted", style: "margin:12px 0 0" }, "Se corrigir o e-mail, todos os dados do cliente são movidos para o novo endereço."),
+    el("div", { class: "row", style: "justify-content:flex-end;margin-top:16px" },
+      el("button", { class: "ghost", onclick: () => modal.fechar() }, "Cancelar"),
+      el("button", { onclick: (e) => acao(e.currentTarget, salvar) }, "Salvar"),
     ),
   );
 }
