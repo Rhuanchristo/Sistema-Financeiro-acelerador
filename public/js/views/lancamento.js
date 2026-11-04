@@ -5,6 +5,7 @@ import { entidadeDe, SUGESTOES } from "../calc.js";
 import { el, abrirModal, acao, toast, campoMes } from "../ui.js";
 import { recarregar } from "../router.js";
 import { listar } from "../data.js";
+import { abrirImportacao } from "./importar-lancamentos.js";
 
 // Limite do Firestore por writeBatch.
 const MAX_LOTE = 500;
@@ -394,6 +395,7 @@ export function telaLancamento(ctx, dados) {
       el("div", { class: "row", style: "justify-content:space-between;align-items:center" },
         el("h2", { style: "margin:0" }, "Lançamentos registrados"),
         el("div", { class: "row", style: "gap:8px" },
+          el("button", { class: "ghost", onclick: () => abrirImportacao(ctx, dados) }, "Importar extrato / fatura"),
           el("button", { onclick: () => modalNovoLancamento(ctx).catch((err) => { console.error(err); toast("Não foi possível abrir o lançamento. Tente de novo."); }) }, "+ Novo lançamento"),
           el("button", { class: "ghost", onclick: () => verificarDuplicados(ctx, dados) }, "Verificar duplicados"),
         ),
