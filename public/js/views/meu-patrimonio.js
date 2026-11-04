@@ -216,7 +216,9 @@ function cartaoBloco(ctx, bloco, itens) {
       el("button", { class: "ghost", onclick: () => modalNovo(ctx, bloco) }, "+ Adicionar"),
     ),
     el("p", { class: "muted", style: "margin:6px 0 4px" }, itens.length ? (bloco.divida ? "Saldo devedor: " : "Total: ") + brl(total) : ""),
-    itens.length ? itens.map((it) => linhaItem(ctx, bloco, it)) : el("p", { class: "muted" }, "Você ainda não tem registros para acompanhar."),
+    itens.length
+      ? el("div", { style: "max-height:420px;overflow-y:auto;padding-right:6px;margin-right:-6px" }, itens.map((it) => linhaItem(ctx, bloco, it)))
+      : el("p", { class: "muted" }, "Você ainda não tem registros para acompanhar."),
   );
 }
 
