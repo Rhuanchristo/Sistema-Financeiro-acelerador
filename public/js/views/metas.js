@@ -29,11 +29,72 @@ const paraCampo = (v) => (num(v) ? num(v).toLocaleString("pt-BR", { minimumFract
 const selo = (texto, fundo, cor) =>
   el("span", { style: "background:" + fundo + ";color:" + cor + ";border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600" }, texto);
 
+const progressoDe = (m) => (num(m.valorAlvo) ? Math.min(1, num(m.valorAtual) / num(m.valorAlvo)) : 0);
+
+// Imagem do objetivo: reduzida no navegador e guardada no próprio cadastro da meta (JPEG, até 800 px).
+function lerImagem(arquivo) {
+  return new Promise((resolve, reject) => {
+    const leitor = new FileReader();
+    leitor.onerror = () => reject(new Error("leitura"));
+    leitor.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("imagem"));
+      img.onload = () => {
+        const escala = Math.min(1, 800 / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * escala);
+        c.height = Math.round(img.height * escala);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        let qualidade = 0.8;
+        let dados = c.toDataURL("image/jpeg", qualidade);
+        while (dados.length > 500000 && qualidade > 0.4) {
+          qualidade -= 0.1;
+          dados = c.toDataURL("image/jpeg", qualidade);
+        }
+        resolve(dados);
+      };
+      img.src = leitor.result;
+    };
+    leitor.readAsDataURL(arquivo);
+  });
+}
+
+// Campo de imagem com prévia. valor(): undefined = não mexeu, null = remover, texto = nova imagem.
+function campoImagem(atual) {
+  let novo;
+  const previa = el("img", { alt: "Prévia da imagem", style: "width:100%;max-height:160px;object-fit:cover;border-radius:8px;display:" + (atual ? "block" : "none"), src: atual || "" });
+  const arquivo = el("input", { type: "file", accept: "image/*" });
+  const remover = el("button", { type: "button", class: "ghost", style: "justify-self:start;display:" + (atual ? "inline-block" : "none") }, "Remover imagem");
+  arquivo.addEventListener("change", async () => {
+    const f = arquivo.files && arquivo.files[0];
+    if (!f) return;
+    try {
+      novo = await lerImagem(f);
+      previa.src = novo;
+      previa.style.display = "block";
+      remover.style.display = "inline-block";
+    } catch (err) {
+      console.error(err);
+      toast("Não foi possível usar esta imagem. Tente outra.");
+      arquivo.value = "";
+    }
+  });
+  remover.addEventListener("click", () => {
+    novo = null;
+    previa.removeAttribute("src");
+    previa.style.display = "none";
+    remover.style.display = "none";
+    arquivo.value = "";
+  });
+  return { el: el("div", { style: "display:grid;gap:8px;min-width:240px" }, previa, arquivo, remover), valor: () => novo };
+}
+
 function modalEditar(ctx, m) {
   const nome = el("input", { type: "text", value: m.nome || "", style: "min-width:220px" });
   const alvo = el("input", { type: "text", inputmode: "decimal", value: paraCampo(m.valorAlvo), class: "num", style: "width:140px" });
   const atual = el("input", { type: "text", inputmode: "decimal", value: paraCampo(m.valorAtual), class: "num", style: "width:140px" });
   const prazo = campoMes(m.mesAlvo);
+  const imagem = campoImagem(m.imagem || null);
   const modal = abrirModal({ titulo: "Editar meta", largura: 560 });
 
   const salvar = async () => {
@@ -46,6 +107,7 @@ function modalEditar(ctx, m) {
       valorAlvo: num(alvo.value),
       valorAtual: num(atual.value),
       mesAlvo: prazo.value,
+      ...(imagem.valor() !== undefined ? { imagem: imagem.valor() } : {}),
       atualizadoEm: new Date().toISOString(),
       atualizadoPor: ctx.user.email,
     }), "Não foi possível salvar a meta. Verifique a conexão e tente novamente.");
@@ -60,6 +122,7 @@ function modalEditar(ctx, m) {
       el("label", {}, "Valor alvo", alvo),
       el("label", {}, "Já acumulado", atual),
       el("label", {}, "Prazo (mês)", prazo),
+      el("label", {}, "Imagem do objetivo", imagem.el),
     ),
     el("div", { class: "row", style: "justify-content:flex-end;margin-top:16px" },
       el("button", { class: "ghost", onclick: () => modal.fechar() }, "Cancelar"),
@@ -108,6 +171,7 @@ export async function telaMetas(ctx) {
   const alvo = el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", class: "num", style: "width:140px" });
   const atual = el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", class: "num", style: "width:140px" });
   const prazo = campoMes(addMeses(hoje, 12));
+  const imagemNova = campoImagem(null);
 
   const salvar = async () => {
     if (!nome.value.trim()) return alert("Informe o nome da meta.");
@@ -119,6 +183,7 @@ export async function telaMetas(ctx) {
       valorAlvo: num(alvo.value),
       valorAtual: num(atual.value),
       mesAlvo: prazo.value,
+      ...(typeof imagemNova.valor() === "string" ? { imagem: imagemNova.valor() } : {}),
       criadoEm: new Date().toISOString(),
       criadoPor: ctx.user.email,
     }), "Não foi possível criar a meta. Verifique a conexão e tente novamente.");
@@ -151,7 +216,9 @@ export async function telaMetas(ctx) {
     else if (vencida) terceiro = kpi("Falta (prazo vencido)", falta);
     else terceiro = kpi("Poupar por mês", falta / restantes);
 
+    const capa = m.imagem ? el("img", { src: m.imagem, alt: "Imagem do objetivo " + (m.nome || ""), style: "width:100%;height:220px;object-fit:cover;border-radius:10px;margin-bottom:16px;display:block" }) : null;
     return el("section", { class: "card" },
+      capa,
       el("div", { class: "row", style: "justify-content:space-between;align-items:center" },
         el("div", { class: "row", style: "align-items:center;gap:10px" },
           el("h2", { style: "margin:0" }, m.nome),
@@ -176,6 +243,21 @@ export async function telaMetas(ctx) {
     );
   });
 
+  // Vitrine dos objetivos: imagem (ou cor neutra) e andamento de cada meta.
+  const galeria = metas.length
+    ? el("div", { style: "display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-bottom:24px" },
+        metas.map((m) => el("div", { style: "border-radius:10px;overflow:hidden;background:#fff;border:1px solid #DDD6CA" },
+          m.imagem
+            ? el("img", { src: m.imagem, alt: "", style: "width:100%;height:150px;object-fit:cover;display:block" })
+            : el("div", { style: "height:150px;background:#ECE7DE;display:flex;align-items:center;justify-content:center;color:#8A8580;font-size:13px" }, "Sem imagem"),
+          el("div", { style: "padding:12px 14px" },
+            el("div", { style: "font-weight:600;color:#132721" }, m.nome || "Meta"),
+            el("div", { class: "muted" }, Math.floor(progressoDe(m) * 100) + "% concluído · " + brl(m.valorAtual) + " de " + brl(m.valorAlvo)),
+          ),
+        )),
+      )
+    : null;
+
   return el("div", {},
     el("section", { class: "card" },
       el("h2", {}, "Nova meta"),
@@ -184,9 +266,11 @@ export async function telaMetas(ctx) {
         el("label", {}, "Valor alvo", alvo),
         el("label", {}, "Já tenho guardado", atual),
         el("label", {}, "Prazo (mês)", prazo),
+        el("label", {}, "Imagem do objetivo", imagemNova.el),
         el("button", { onclick: (e) => acao(e.currentTarget, salvar) }, "Criar meta"),
       ),
     ),
+    galeria,
     metas.length === 0 ? el("p", { class: "muted" }, "Nenhuma meta criada ainda.") : cartoes,
   );
 }
