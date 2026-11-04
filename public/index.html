@@ -247,8 +247,8 @@
     .inicio-grid > section.card > .inicio-canvas, .inicio-grid > section.card > .inicio-duas { margin-top:auto; }
     .inicio-grid > section.card > .inicio-lista { margin-top:0; }
     .inicio-canvas { position:relative; height:280px; }
-    .inicio-duas { display:grid; grid-template-columns:minmax(150px, 200px) minmax(0, 1fr); gap:20px; align-items:center; }
-    .inicio-canvas-rosca { position:relative; height:200px; }
+    .inicio-duas { display:flex; flex-direction:column; gap:18px; min-width:0; }
+    .inicio-canvas-rosca { position:relative; width:100%; max-width:240px; height:240px; margin:0 auto; }
     .inicio-legenda { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
     .inicio-legenda li { display:grid; grid-template-columns:10px minmax(0,1fr) auto 48px; gap:8px; align-items:center; font-size:13px; font-variant-numeric:lining-nums tabular-nums; }
     .inicio-legenda li > strong { text-align:right; }
@@ -266,7 +266,6 @@
       .inicio-hero { grid-template-columns:1fr; padding:24px 20px; }
       .inicio-hero-lado { min-width:0; }
       .inicio-grid { grid-template-columns:1fr; }
-      .inicio-duas { grid-template-columns:1fr; }
     }
   </style>
   <link rel="stylesheet" href="./css/print.css" media="print" />
