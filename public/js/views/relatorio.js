@@ -5,7 +5,7 @@ import { db, doc, getDoc } from "../firebase.js";
 import { brl, pct, num, soma, mesNome, mesAtual, mesesEntre } from "../format.js";
 import { resumoAno, calcPatrimonio, projetar, entidadeDe, CATEGORIAS_PATRIMONIO, PARAMS_APOSENT } from "../calc.js";
 import { listar } from "../data.js";
-import { el, kpi } from "../ui.js";
+import { el, kpi, campoMes } from "../ui.js";
 import { recarregar } from "../router.js";
 
 const MESES_LONGOS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -190,7 +190,7 @@ export function telaRelatorio(ctx, dados) {
   const emp = mesDaEntidade(dados.lancamentos, "empresa", ano, idx, dados.params);
   const pf = mesDaEntidade(dados.lancamentos, "pessoa", ano, idx, dados.params);
 
-  const seletor = el("input", { type: "month", value: mesSel });
+  const seletor = campoMes(mesSel);
   seletor.addEventListener("change", () => {
     if (!seletor.value) return;
     ctx.mes = seletor.value;

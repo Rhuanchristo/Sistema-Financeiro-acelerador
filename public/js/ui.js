@@ -153,18 +153,34 @@ export async function acao(botao, fn) {
   }
 }
 
-// Escolha de mês e ano em dois seletores. Valor no formato AAAA-MM (propriedade .value).
-export function campoMes(valor, { anosAFrente = 40 } = {}) {
+// Escolha de mês e ano em dois seletores (funciona para qualquer ano). Valor no formato AAAA-MM na propriedade .value.
+// opcoes.vazio: permite "sem filtro" (value vazio). opcoes.disabled: bloqueia a escolha.
+export function campoMes(valor, { anosAFrente = 40, vazio = false, disabled = false } = {}) {
   const hoje = new Date();
   const [a0, m0] = String(valor || "").split("-").map(Number);
-  const anoSel = a0 || hoje.getFullYear();
-  const mesSel = m0 || hoje.getMonth() + 1;
+  const anoSel = a0 || (vazio ? 0 : hoje.getFullYear());
+  const mesSel = m0 || (vazio ? 0 : hoje.getMonth() + 1);
   const nomes = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-  const selMes = el("select", { "aria-label": "Mês" }, nomes.map((n, i) => el("option", { value: String(i + 1).padStart(2, "0"), selected: i + 1 === mesSel }, n)));
+  const selMes = el("select", { "aria-label": "Mês", disabled }, [
+    ...(vazio ? [el("option", { value: "", selected: !mesSel }, "—")] : []),
+    ...nomes.map((n, i) => el("option", { value: String(i + 1).padStart(2, "0"), selected: i + 1 === mesSel }, n)),
+  ]);
   const anos = [];
-  for (let y = Math.min(hoje.getFullYear(), anoSel); y <= Math.max(hoje.getFullYear() + anosAFrente, anoSel); y++) anos.push(y);
-  const selAno = el("select", { "aria-label": "Ano" }, anos.map((y) => el("option", { value: String(y), selected: y === anoSel }, String(y))));
-  const wrap = el("div", { class: "campo-mes", style: "display:flex;gap:6px" }, selMes, selAno);
-  Object.defineProperty(wrap, "value", { get: () => selAno.value + "-" + selMes.value, configurable: true });
+  const anoMin = 2000;
+  const anoMax = Math.max(hoje.getFullYear() + anosAFrente, anoSel);
+  for (let y = anoMin; y <= anoMax; y++) anos.push(y);
+  const selAno = el("select", { "aria-label": "Ano", disabled }, [
+    ...(vazio ? [el("option", { value: "", selected: !anoSel }, "—")] : []),
+    ...anos.map((y) => el("option", { value: String(y), selected: y === anoSel }, String(y))),
+  ]);
+  const wrap = el("div", { class: "campo-mes", style: "display:flex;gap:6px;flex-wrap:wrap" }, selMes, selAno);
+  Object.defineProperty(wrap, "value", {
+    get: () => {
+      if (!selAno.value) return "";
+      const m = selMes.value || "01";
+      return selAno.value + "-" + m;
+    },
+    configurable: true,
+  });
   return wrap;
 }

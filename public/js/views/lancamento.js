@@ -2,7 +2,7 @@
 import { db, doc, collection, writeBatch } from "../firebase.js";
 import { brl, num, soma, addMeses, mesNome, mesAtual } from "../format.js";
 import { entidadeDe, SUGESTOES } from "../calc.js";
-import { el, abrirModal, acao, toast } from "../ui.js";
+import { el, abrirModal, acao, toast, campoMes } from "../ui.js";
 import { recarregar } from "../router.js";
 
 // Limite do Firestore por writeBatch.
@@ -121,7 +121,7 @@ export function telaLancamento(ctx, dados) {
   const categoria = el("input", { type: "text", list: "sugestoes-categoria", placeholder: "Ex.: Aluguel", style: "min-width:200px" });
   const descricao = el("input", { type: "text", placeholder: "Opcional", style: "min-width:200px" });
   const valor = el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", class: "num", style: "width:140px" });
-  const mes = el("input", { type: "month", value: mesAtual() });
+  const mes = campoMes(mesAtual());
   const forma = el("select", {},
     el("option", { value: "unico" }, "Lançamento único"),
     el("option", { value: "replicar" }, "Replicar (mesmo valor em cada mês)"),
@@ -218,8 +218,8 @@ export function telaLancamento(ctx, dados) {
     recarregar();
   };
   const categoriasUnicas = [...new Set(dados.lancamentos.map((l) => l.categoria))].sort();
-  const filtroDe = el("input", { type: "month" });
-  const filtroAte = el("input", { type: "month" });
+  const filtroDe = campoMes("", { vazio: true });
+  const filtroAte = campoMes("", { vazio: true });
   const filtroCat = el("select", {}, [el("option", { value: "" }, "Todas as categorias"), ...categoriasUnicas.map((c) => el("option", { value: c }, c))]);
   const filtroQuem = el("select", {},
     el("option", { value: "" }, "Empresa e Pessoa física"),
@@ -437,7 +437,7 @@ function abrirEdicaoLancamento(ctx, l, dados) {
       el("option", { value: "pessoa", selected: entidadeDe(l) === "pessoa" }, "Pessoa física"),
     );
     const inVal = el("input", { type: "text", inputmode: "decimal", value: valorInicial.toFixed(2).replace(".", ","), class: "num", style: "width:140px" });
-    const inMes = el("input", { type: "month", value: l.mesInicial || mesAtual(), disabled: varios || legado });
+    const inMes = campoMes(l.mesInicial || mesAtual(), { disabled: varios || legado });
     const aviso = legado
       ? "Este é um parcelamento de cadastro antigo: a alteração vale para o total do parcelamento."
       : ehSerie && serieParcelada

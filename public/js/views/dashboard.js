@@ -1,7 +1,7 @@
 // Dashboard do cliente: um mês por vez + gráfico mensal do ano.
 import { brl, pct, MESES, mesNome, mesAtual } from "../format.js";
 import { resumoAno, calcPatrimonio } from "../calc.js";
-import { el, kpi } from "../ui.js";
+import { el, kpi, campoMes } from "../ui.js";
 import { recarregar } from "../router.js";
 
 // ----- Gráfico mensal consolidado: receitas, despesas e caixa -----
@@ -80,7 +80,7 @@ export function telaDashboard(ctx, dados) {
   const m = r.meses[idx];
   const pat = calcPatrimonio(dados.patrimonio);
 
-  const seletor = el("input", { type: "month", value: mesSel });
+  const seletor = campoMes(mesSel);
   seletor.addEventListener("change", () => {
     if (!seletor.value) return;
     ctx.mes = seletor.value;
