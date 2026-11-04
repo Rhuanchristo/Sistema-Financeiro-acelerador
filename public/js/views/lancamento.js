@@ -4,6 +4,7 @@ import { brl, num, soma, addMeses, mesNome, mesAtual } from "../format.js";
 import { entidadeDe, SUGESTOES } from "../calc.js";
 import { el, abrirModal, acao, toast, campoMes } from "../ui.js";
 import { recarregar } from "../router.js";
+import { listar } from "../data.js";
 
 // Limite do Firestore por writeBatch.
 const MAX_LOTE = 500;
@@ -106,7 +107,7 @@ async function excluirLancamento(ctx, l, dados) {
 // meio de pagamento, parcelamento, quem, classificação e categoria.
 const CLASSIFICACOES = [
   "Classificação neutra", "Despesas não obrigatórias", "Despesas obrigatórias", "Dívidas",
-  "Empresa e autônomo", "Financiamentos", "Investimentos", "Projetos", "Renda",
+  "Empresa e autônomo", "Financiamentos", "Investimentos", "Metas", "Projetos", "Renda",
 ];
 const CATEGORIAS_POR_CLASSIFICACAO = {
   "Renda": ["Outras fontes de renda", "Renda Cliente", "Renda cônjuge"],
@@ -145,7 +146,8 @@ function chips(opcoes, valorInicial, aoMudar) {
 const secaoForm = (titulo, conteudo) => el("div", { style: "margin-bottom:18px" }, el("h3", { style: "margin:0 0 8px" }, titulo), conteudo);
 const grade2 = (...itens) => el("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px" }, ...itens);
 
-function modalNovoLancamento(ctx) {
+async function modalNovoLancamento(ctx) {
+  const metas = await listar(["users", ctx.email, "metas"]);
   const modal = abrirModal({ titulo: "Novo lançamento", largura: 760 });
   const direcao = chips([["receita", "Entrada"], ["despesa", "Saída"]], "despesa");
   const quem = chips([["empresa", "Empresa"], ["pessoa", "Pessoa física"]], "empresa");
@@ -219,13 +221,24 @@ function modalNovoLancamento(ctx) {
       boxCategoria.replaceChildren(categoriaTexto);
     }
   };
-  const classificacao = chips(CLASSIFICACOES.map((c) => [c, c]), "", (v) => desenharCategoria(v));
+  // Meta de destino: aparece quando a classificação é Metas; o valor conta no progresso da meta escolhida.
+  const metaSel = el("select", { style: "width:100%" },
+    el("option", { value: "" }, "Escolha a meta"),
+    metas.map((m) => el("option", { value: m.id }, m.nome || "Meta")),
+  );
+  const blocoMeta = secaoForm("Meta de destino", metas.length ? metaSel : el("p", { class: "muted" }, "Você ainda não tem metas. Crie uma em Plano de metas."));
+  blocoMeta.style.display = "none";
+  const classificacao = chips(CLASSIFICACOES.map((c) => [c, c]), "", (v) => {
+    desenharCategoria(v);
+    blocoMeta.style.display = v === "Metas" ? "" : "none";
+  });
   desenharCategoria("");
 
   const salvar = async () => {
     const total = num(valor.value);
     const classif = classificacao.valor();
     const cat = categoriaTemLista ? categoriaEscolhida : categoriaTexto.value.trim();
+    const metaId = classif === "Metas" ? metaSel.value : "";
     const mesIni = data.value ? data.value.slice(0, 7) : "";
     const parcelado = parcela.valor() === "sim";
     const n = parcelado ? Math.floor(num(meses.value)) : 1;
@@ -233,6 +246,7 @@ function modalNovoLancamento(ctx) {
     if (!(total > 0)) return alert("Informe um valor maior que zero.");
     if (!classif) return alert("Escolha a classificação.");
     if (!cat) return alert("Escolha ou informe a categoria.");
+    if (classif === "Metas" && !metaId) return alert("Escolha a meta de destino.");
     if (!(n >= 1 && n <= 360)) return alert("O número de meses deve estar entre 1 e 360.");
     const valores = parcelado && forma.value === "parcelado" ? dividirValor(total, n) : Array(n).fill(total);
     if (valores.some((v) => !(v > 0))) return alert("O valor é pequeno demais para dividir em " + n + " parcelas.");
@@ -254,6 +268,7 @@ function modalNovoLancamento(ctx) {
         parcelas: 1,
         modo: n === 1 ? "unico" : forma.value,
         entidade: quem.valor(),
+        ...(metaId ? { metaId } : {}),
         grupoId,
         criadoEm,
         criadoPor: ctx.user.email,
@@ -281,6 +296,7 @@ function modalNovoLancamento(ctx) {
     secaoForm("Quem", quem.el),
     secaoForm("Classificação", classificacao.el),
     secaoForm("Categoria", boxCategoria),
+    blocoMeta,
     datalist,
     el("div", { class: "row", style: "justify-content:flex-end;margin-top:20px" },
       el("button", { class: "ghost", onclick: () => modal.fechar() }, "Cancelar"),
@@ -378,7 +394,7 @@ export function telaLancamento(ctx, dados) {
       el("div", { class: "row", style: "justify-content:space-between;align-items:center" },
         el("h2", { style: "margin:0" }, "Lançamentos registrados"),
         el("div", { class: "row", style: "gap:8px" },
-          el("button", { onclick: () => modalNovoLancamento(ctx) }, "+ Novo lançamento"),
+          el("button", { onclick: () => modalNovoLancamento(ctx).catch((err) => { console.error(err); toast("Não foi possível abrir o lançamento. Tente de novo."); }) }, "+ Novo lançamento"),
           el("button", { class: "ghost", onclick: () => verificarDuplicados(ctx, dados) }, "Verificar duplicados"),
         ),
       ),

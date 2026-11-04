@@ -92,7 +92,7 @@ function campoImagem(atual) {
 function modalEditar(ctx, m) {
   const nome = el("input", { type: "text", value: m.nome || "", style: "min-width:220px" });
   const alvo = el("input", { type: "text", inputmode: "decimal", value: paraCampo(m.valorAlvo), class: "num", style: "width:140px" });
-  const atual = el("input", { type: "text", inputmode: "decimal", value: paraCampo(m.valorAtual), class: "num", style: "width:140px" });
+  const atual = el("input", { type: "text", inputmode: "decimal", value: paraCampo(m.valorManual ?? m.valorAtual), class: "num", style: "width:140px" });
   const prazo = campoMes(m.mesAlvo);
   const imagem = campoImagem(m.imagem || null);
   const modal = abrirModal({ titulo: "Editar meta", largura: 560 });
@@ -120,7 +120,7 @@ function modalEditar(ctx, m) {
     el("div", { class: "row" },
       el("label", {}, "Meta", nome),
       el("label", {}, "Valor alvo", alvo),
-      el("label", {}, "Já acumulado", atual),
+      el("label", {}, "Já acumulado (manual)", atual),
       el("label", {}, "Prazo (mês)", prazo),
       el("label", {}, "Imagem do objetivo", imagem.el),
     ),
@@ -139,7 +139,7 @@ function modalAporte(ctx, m) {
     const v = num(valor.value);
     if (!(v > 0)) return alert("Informe um valor de aporte maior que zero.");
     if (!(num(m.valorAlvo) > 0)) return alert("Esta meta está sem valor alvo. Edite a meta antes de registrar o aporte.");
-    const novo = Math.round((num(m.valorAtual) + v) * 100) / 100;
+    const novo = Math.round((num(m.valorManual ?? m.valorAtual) + v) * 100) / 100;
     const ok = await gravar(() => updateDoc(doc(db, "users", ctx.email, "metas", m.id), {
       valorAlvo: num(m.valorAlvo),
       valorAtual: novo,
@@ -164,8 +164,14 @@ function modalAporte(ctx, m) {
 }
 
 export async function telaMetas(ctx) {
-  const metas = await listar(["users", ctx.email, "metas"]);
+  const metasBase = await listar(["users", ctx.email, "metas"]);
+  const lancamentos = await listar(["users", ctx.email, "lancamentos"]);
   const hoje = mesAtual();
+  // Já acumulado = aporte manual + lançamentos classificados como Metas e apontados para esta meta.
+  const metas = metasBase.map((m) => {
+    const doLancamentos = lancamentos.filter((l) => l.metaId === m.id).reduce((s, l) => s + num(l.valorTotal), 0);
+    return { ...m, valorManual: num(m.valorAtual), lancamentos: doLancamentos, valorAtual: num(m.valorAtual) + doLancamentos };
+  });
 
   const nome = el("input", { type: "text", placeholder: "Ex.: Reserva de emergência", style: "min-width:220px" });
   const alvo = el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", class: "num", style: "width:140px" });
@@ -234,6 +240,7 @@ export async function telaMetas(ctx) {
         ),
       ),
       el("p", { class: "muted" }, textoPrazo + " · " + Math.floor(progresso * 100) + "% concluído"),
+      m.lancamentos > 0 ? el("p", { class: "muted", style: "margin:0 0 6px" }, "Inclui " + brl(m.lancamentos) + " em lançamentos classificados como Metas.") : null,
       el("div", { style: "background:#ECE7DE;border-radius:99px;height:12px;overflow:hidden;margin:10px 0" },
         el("div", { style: "background:" + (vencida && !concluida ? "#B0413E" : "#2C4A3E") + ";height:100%;width:" + (progresso * 100).toFixed(1) + "%" }),
       ),
