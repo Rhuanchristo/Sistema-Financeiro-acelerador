@@ -1,4 +1,4 @@
-// Home Conect: cartões das ferramentas (abrem na mesma página) e tela do Open Finance.
+// Conexões: cartões das ferramentas (abrem na mesma página) e tela do Open Finance.
 import { el } from "../ui.js";
 import { ir, hashFerramenta } from "../router.js";
 

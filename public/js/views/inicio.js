@@ -182,7 +182,7 @@ function atalhos(ctx) {
     ["patrimonio", "Meu Patrimônio"],
     ["protecao", "Proteção"],
     ["relatorio", "Relatório mensal"],
-    ["home", "Home Conect"],
+    ["home", "Conexões"],
   ];
   return cartao("Atalhos",
     el("div", { class: "inicio-atalhos" }, itens.map(([k, l]) =>

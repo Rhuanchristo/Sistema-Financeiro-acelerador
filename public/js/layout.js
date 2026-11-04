@@ -17,7 +17,7 @@ const TITULOS_SECAO = {
   patrimonio: "Meu Patrimônio",
   protecao: "Proteção",
   relatorio: "Relatório mensal",
-  home: "Home Conect",
+  home: "Conexões",
   clientes: "Clientes",
   oportunidade: "Oportunidades",
 };
@@ -89,12 +89,12 @@ export function shellPortal(ctx, secao, conteudo) {
     ["patrimonio", "Meu Patrimônio"],
     ["protecao", "Proteção"],
     ["relatorio", "Relatório"],
-    ["home", "Home Conect"],
+    ["home", "Conexões"],
   ];
   const voltar = ctx.modo === "admin"
     ? [item("← Clientes", false, () => ir(hashAdmin("clientes")), " menu-voltar")]
     : [];
-  // As ferramentas do Home Conect abrem aqui mesmo: o menu marca "Home Conect" e a página ganha um atalho de volta.
+  // As ferramentas do Conexões abrem aqui mesmo: o menu marca "Conexões" e a página ganha um atalho de volta.
   const ferramenta = TITULOS_FERRAMENTA[secao];
   const ativo = ferramenta ? "home" : secao;
   return casca({
@@ -103,7 +103,7 @@ export function shellPortal(ctx, secao, conteudo) {
     acoes: () => [botaoSair()],
     titulo: ferramenta || TITULOS_SECAO[secao] || "Painel",
     subtitulo: ctx.modo === "admin" ? "Cliente: " + ctx.nome : "Olá, " + ctx.nome,
-    voltarPara: ferramenta ? ["← Home Conect", () => ir(hashCliente(ctx, "home"))] : null,
+    voltarPara: ferramenta ? ["← Conexões", () => ir(hashCliente(ctx, "home"))] : null,
     conteudo,
   });
 }

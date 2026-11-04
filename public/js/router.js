@@ -4,7 +4,7 @@
 //   cliente:            #/inicio (Home, abertura)  #/dashboard  #/lancamento  #/receitas  #/patrimonio  #/home  #/relatorio
 //   admin:              #/admin/clientes  #/admin/dashboard  #/admin/oportunidade
 //   admin vê cliente:   #/cliente/{email codificado}/{secao}
-//   ferramentas:        #/metas  #/aposentadoria  #/open-finance  (Home Conect, na mesma página; admin usa #/cliente/{email}/{tipo})
+//   ferramentas:        #/metas  #/aposentadoria  #/open-finance  (Conexões, na mesma página; admin usa #/cliente/{email}/{tipo})
 //   formato antigo:     #/ferramenta/{tipo}[?cliente=...] é redirecionado para a seção equivalente
 // Para navegar use ir(hash). Para redesenhar a rota atual (ex.: após salvar) use recarregar().
 import { auth, db, doc, getDoc, updateDoc, onAuthStateChanged } from "./firebase.js";
@@ -46,7 +46,7 @@ export const perfilAtual = () => perfil;
 export const hashAdmin = (secao = "clientes") => "#/admin/" + secao;
 export const hashCliente = (ctx, secao) =>
   ctx.modo === "admin" ? "#/cliente/" + encodeURIComponent(ctx.email) + "/" + secao : "#/" + secao;
-// As ferramentas do Home Conect abrem na mesma página, como as demais seções.
+// As ferramentas do Conexões abrem na mesma página, como as demais seções.
 export const hashFerramenta = (ctx, tipo) => hashCliente(ctx, tipo);
 
 const decodificar = (s) => {
@@ -195,7 +195,7 @@ async function renderPortal(ctx, secao, token) {
   const slot = carregando();
   setView(shellPortal(ctx, secao, slot));
 
-  // Ferramentas do Home Conect carregam os próprios dados.
+  // Ferramentas do Conexões carregam os próprios dados.
   if (secao === "metas") {
     const tela = await telaMetas(ctx);
     if (token === seq) slot.replaceChildren(tela);
