@@ -6,10 +6,6 @@ import { el, abrirModal, acao, toast, campoMes } from "../ui.js";
 import { recarregar } from "../router.js";
 import { lerLinhaTexto, lerLinhaPlanilha, qualificar, chaveDescricao } from "../importacao.js";
 
-const CLASSIFICACOES = [
-  "Classificação neutra", "Despesas não obrigatórias", "Despesas obrigatórias", "Dívidas",
-  "Empresa e autônomo", "Financiamentos", "Investimentos", "Projetos", "Renda",
-];
 const URL_PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
 const URL_PDFJS_WORKER = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
 const URL_XLSX = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
@@ -108,15 +104,6 @@ export function abrirImportacao(ctx, dados) {
   const listaDo = (tipo) => (tipo === "receita" ? "painel-receitas" : "painel-despesas");
   // Usa o nome exato da linha do painel quando ele existe (sem diferenciar maiúsculas e acentos).
   const nomeNoPainel = (nome, tipo) => nomesDoPainel(tipo).find((n) => chaveDescricao(n) === chaveDescricao(nome)) || nome;
-  const campoCategoriaTodas = el("input", { type: "text", list: "painel-despesas", placeholder: "Ex.: Mercado (igual à linha do painel)", style: "min-width:260px" });
-  const aplicarCategoriaTodas = () => {
-    const nome = campoCategoriaTodas.value.trim();
-    if (!nome) return alert("Digite a categoria para aplicar.");
-    let n = 0;
-    for (const r of linhas) if (r.inputs.incluir.checked) { r.inputs.cat.value = nomeNoPainel(nome, r.inputs.tipo.value); n++; }
-    if (!n) return alert("Marque pelo menos um lançamento.");
-    toast(n + " linha(s) com a categoria " + nome + ".");
-  };
   let linhas = [];
 
   const valorLinha = (r) => num(r.inputs.valor.value);
@@ -145,13 +132,12 @@ export function abrirImportacao(ctx, dados) {
         el("option", { value: "despesa", selected: !entrada }, "Saída"),
         el("option", { value: "receita", selected: entrada }, "Entrada"),
       ),
-      classif: el("select", {}, CLASSIFICACOES.map((c) => el("option", { value: c, selected: c === (hist ? hist.classificacao : q.classificacao) }, c))),
-      cat: el("input", { type: "text", list: listaDo(entrada ? "receita" : "despesa"), value: hist ? hist.categoria : nomeNoPainel(q.categoria, entrada ? "receita" : "despesa"), placeholder: "Igual à linha do painel", style: "min-width:180px" }),
+      cat: el("input", { type: "text", list: listaDo(entrada ? "receita" : "despesa"), value: hist ? hist.categoria : nomeNoPainel(q.categoria, entrada ? "receita" : "despesa"), placeholder: "Nome da linha no painel", style: "min-width:220px" }),
     };
     Object.assign(inputsDaLinha, inputs);
     inputs.incluir.checked = incluir;
     inputs.valor.addEventListener("input", atualizarResumo);
-    return { data: it.data, situacao, inputs };
+    return { data: it.data, situacao, grupo: hist ? hist.classificacao : q.classificacao, inputs };
   };
 
   const ler = async () => {
@@ -185,8 +171,7 @@ export function abrirImportacao(ctx, dados) {
         el("th", {}, "Descrição"),
         el("th", { class: "num" }, "Valor"),
         el("th", {}, "Tipo"),
-        el("th", {}, "Classificação"),
-        el("th", {}, "Categoria"),
+        el("th", {}, "Classificação (linha do painel)"),
         el("th", {}, "Situação"),
       )),
       el("tbody", {}, linhas.map((r) => el("tr", {},
@@ -195,7 +180,6 @@ export function abrirImportacao(ctx, dados) {
         el("td", {}, r.inputs.desc),
         el("td", { class: "num" }, r.inputs.valor),
         el("td", {}, r.inputs.tipo),
-        el("td", {}, r.inputs.classif),
         el("td", {}, r.inputs.cat),
         el("td", { class: "muted" }, r.situacao),
       ))),
@@ -220,7 +204,7 @@ export function abrirImportacao(ctx, dados) {
           lote.set(doc(colecao), {
             tipo: r.inputs.tipo.value,
             categoria: r.inputs.cat.value.trim(),
-            classificacao: r.inputs.classif.value,
+            classificacao: r.grupo,
             descricao: r.inputs.desc.value.trim(),
             estabelecimento: r.inputs.desc.value.trim(),
             meioPagamento: fonte.value === "fatura" ? "Cartão de crédito" : "",
@@ -263,10 +247,6 @@ export function abrirImportacao(ctx, dados) {
     ),
     status,
     resumo,
-    el("div", { class: "row", style: "align-items:flex-end;margin:8px 0" },
-      el("label", {}, "Categoria para as linhas marcadas (nome da linha no painel)", campoCategoriaTodas),
-      el("button", { class: "ghost", onclick: aplicarCategoriaTodas }, "Aplicar às marcadas"),
-    ),
     area,
     datalistReceitas,
     datalistDespesas,
