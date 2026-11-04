@@ -97,8 +97,26 @@ export function abrirImportacao(ctx, dados) {
   const status = el("p", { class: "muted" }, "Escolha o arquivo e clique em Ler arquivo. Nada é lançado antes da sua confirmação.");
   const resumo = el("p", { class: "muted", style: "margin:8px 0" });
   const area = el("div", { class: "scroll" });
-  const datalist = el("datalist", { id: "sugestoes-importacao" },
-    [...new Set([...dados.lancamentos.map((l) => l.categoria).filter(Boolean)])].map((c) => el("option", { value: c })));
+  // Nomes das linhas do painel Receitas e despesas (um por tipo). A categoria digitada aqui precisa ser igual
+  // ao nome da linha para o lançamento aparecer nela.
+  const nomesDoPainel = (tipo) => [...new Set(dados.lancamentos
+    .filter((l) => l.tipo === tipo).map((l) => String(l.categoria || "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const opcoes = (nomes) => nomes.map((c) => el("option", { value: c }));
+  const datalistReceitas = el("datalist", { id: "painel-receitas" }, opcoes(nomesDoPainel("receita")));
+  const datalistDespesas = el("datalist", { id: "painel-despesas" }, opcoes(nomesDoPainel("despesa")));
+  const listaDo = (tipo) => (tipo === "receita" ? "painel-receitas" : "painel-despesas");
+  // Usa o nome exato da linha do painel quando ele existe (sem diferenciar maiúsculas e acentos).
+  const nomeNoPainel = (nome, tipo) => nomesDoPainel(tipo).find((n) => chaveDescricao(n) === chaveDescricao(nome)) || nome;
+  const campoCategoriaTodas = el("input", { type: "text", list: "painel-despesas", placeholder: "Ex.: Mercado (igual à linha do painel)", style: "min-width:260px" });
+  const aplicarCategoriaTodas = () => {
+    const nome = campoCategoriaTodas.value.trim();
+    if (!nome) return alert("Digite a categoria para aplicar.");
+    let n = 0;
+    for (const r of linhas) if (r.inputs.incluir.checked) { r.inputs.cat.value = nomeNoPainel(nome, r.inputs.tipo.value); n++; }
+    if (!n) return alert("Marque pelo menos um lançamento.");
+    toast(n + " linha(s) com a categoria " + nome + ".");
+  };
   let linhas = [];
 
   const valorLinha = (r) => num(r.inputs.valor.value);
@@ -118,17 +136,19 @@ export function abrirImportacao(ctx, dados) {
       && chaveDescricao(l.descricao) === chaveDescricao(it.descricao));
     const incluir = !q.ignorar && !existe;
     const situacao = q.ignorar ? "Pagamento de fatura (fora do gasto)" : existe ? "Já lançado neste mês" : "Novo";
+    const inputsDaLinha = {};
     const inputs = {
       incluir: el("input", { type: "checkbox", onchange: atualizarResumo }),
       desc: el("input", { type: "text", value: it.descricao, style: "min-width:200px" }),
       valor: el("input", { type: "text", inputmode: "decimal", value: it.valor.toFixed(2).replace(".", ","), class: "num", style: "width:110px" }),
-      tipo: el("select", { onchange: atualizarResumo },
+      tipo: el("select", { onchange: () => { inputsDaLinha.cat.setAttribute("list", listaDo(inputsDaLinha.tipo.value)); atualizarResumo(); } },
         el("option", { value: "despesa", selected: !entrada }, "Saída"),
         el("option", { value: "receita", selected: entrada }, "Entrada"),
       ),
       classif: el("select", {}, CLASSIFICACOES.map((c) => el("option", { value: c, selected: c === (hist ? hist.classificacao : q.classificacao) }, c))),
-      cat: el("input", { type: "text", list: "sugestoes-importacao", value: hist ? hist.categoria : q.categoria, style: "min-width:160px" }),
+      cat: el("input", { type: "text", list: listaDo(entrada ? "receita" : "despesa"), value: hist ? hist.categoria : nomeNoPainel(q.categoria, entrada ? "receita" : "despesa"), placeholder: "Igual à linha do painel", style: "min-width:180px" }),
     };
+    Object.assign(inputsDaLinha, inputs);
     inputs.incluir.checked = incluir;
     inputs.valor.addEventListener("input", atualizarResumo);
     return { data: it.data, situacao, inputs };
@@ -243,8 +263,13 @@ export function abrirImportacao(ctx, dados) {
     ),
     status,
     resumo,
+    el("div", { class: "row", style: "align-items:flex-end;margin:8px 0" },
+      el("label", {}, "Categoria para as linhas marcadas (nome da linha no painel)", campoCategoriaTodas),
+      el("button", { class: "ghost", onclick: aplicarCategoriaTodas }, "Aplicar às marcadas"),
+    ),
     area,
-    datalist,
+    datalistReceitas,
+    datalistDespesas,
     el("div", { class: "row", style: "justify-content:flex-end;margin-top:16px" },
       el("button", { class: "ghost", onclick: () => modal.fechar() }, "Cancelar"),
       el("button", { onclick: (e) => acao(e.currentTarget, lancar) }, "Lançar selecionados"),
