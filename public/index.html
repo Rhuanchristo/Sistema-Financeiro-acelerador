@@ -242,13 +242,17 @@
     .inicio-kpi span { display:block; font-size:12px; color:var(--cinza-texto); }
     .inicio-kpi strong { display:block; margin:6px 0 4px; font:500 clamp(18px,1.7vw,24px)/1.15 var(--serif); color:var(--verde-profundo); font-variant-numeric:lining-nums tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .inicio-kpi p { margin:0; font-size:12px; }
-    .inicio-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px; align-items:start; }
-    .inicio-grid > section.card { margin:0; }
+    .inicio-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px; align-items:stretch; }
+    .inicio-grid > section.card { margin:0; display:flex; flex-direction:column; min-width:0; }
+    .inicio-grid > section.card > .inicio-canvas, .inicio-grid > section.card > .inicio-duas { margin-top:auto; }
+    .inicio-grid > section.card > .inicio-lista { margin-top:0; }
     .inicio-canvas { position:relative; height:280px; }
     .inicio-duas { display:grid; grid-template-columns:minmax(150px, 200px) minmax(0, 1fr); gap:20px; align-items:center; }
     .inicio-canvas-rosca { position:relative; height:200px; }
     .inicio-legenda { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
-    .inicio-legenda li { display:grid; grid-template-columns:12px minmax(0,1fr) auto auto; gap:8px; align-items:center; font-size:13px; }
+    .inicio-legenda li { display:grid; grid-template-columns:10px minmax(0,1fr) auto 48px; gap:8px; align-items:center; font-size:13px; font-variant-numeric:lining-nums tabular-nums; }
+    .inicio-legenda li > strong { text-align:right; }
+    .inicio-legenda li > .muted { text-align:right; }
     .inicio-legenda .bolinha { width:10px; height:10px; border-radius:50%; }
     .inicio-legenda .nome { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .inicio-lista { list-style:none; margin:0; padding:0; }
@@ -256,7 +260,8 @@
     .inicio-lista li:last-child { border-bottom:0; }
     .inicio-lista .direita { text-align:right; display:flex; flex-direction:column; align-items:flex-end; font-size:13px; }
     .inicio-lista .alerta { color:var(--vermelho); font-size:12px; }
-    .inicio-atalhos { display:flex; flex-wrap:wrap; gap:8px; }
+    .inicio-atalhos { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:8px; }
+    .inicio-atalhos button { width:100%; }
     @media (max-width: 720px) {
       .inicio-hero { grid-template-columns:1fr; padding:24px 20px; }
       .inicio-hero-lado { min-width:0; }
