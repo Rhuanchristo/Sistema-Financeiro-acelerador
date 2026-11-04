@@ -7,7 +7,7 @@ import { el, acao, abrirModal, toast, campoMes } from "../ui.js";
 import { recarregar, ir, hashFerramenta } from "../router.js";
 
 const TIPO = Object.fromEntries(CATEGORIAS_PATRIMONIO.map(([k, l, t]) => [k, { rotulo: l, tipo: t }]));
-const ehDivida = (it) => (TIPO[it.categoria] || {}).tipo === "divida";
+export const ehDivida = (it) => (TIPO[it.categoria] || {}).tipo === "divida";
 
 // Blocos da tela, na ordem em que aparecem. Itens sem categoria conhecida caem em Investimentos.
 const BLOCOS = [
@@ -238,7 +238,7 @@ function desenharRosca(canvas, rotulos, valores, cores) {
   }));
 }
 
-function serieMensal(itens) {
+export function serieMensal(itens) {
   const hoje = mesAtualYM();
   let inicio = hoje;
   for (const it of itens) for (const k of Object.keys(it.historico || {})) if (k < inicio) inicio = k;

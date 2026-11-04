@@ -221,6 +221,48 @@
       /* Grade mês a mês: continua rolando de lado, com a coluna da categoria fixa. */
       table.matriz th:first-child, table.matriz td:first-child { position:sticky; left:0; z-index:1; background:var(--card); box-shadow:1px 0 0 var(--linha); }
     }
+
+    /* ---------- Home (página de abertura) ---------- */
+    .inicio { display:flex; flex-direction:column; }
+    .inicio-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:24px; align-items:center; background:linear-gradient(135deg, var(--verde-profundo) 0%, var(--verde) 100%); color:var(--offwhite); border-radius:14px; padding:30px 32px; margin-bottom:20px; box-shadow:0 10px 30px rgba(19,39,33,.18); }
+    .inicio-hero::after { content:""; position:absolute; right:-80px; top:-80px; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, color-mix(in srgb, var(--dourado) 35%, transparent), transparent 70%); pointer-events:none; }
+    .inicio-hero > * { position:relative; z-index:1; }
+    .inicio-sub { margin:0; color:var(--verde-claro); font-size:13px; }
+    .inicio-rotulo { margin:14px 0 0; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dourado); }
+    .inicio-valor { margin:4px 0 6px; font:500 clamp(36px,5vw,58px)/1.05 var(--serif); font-variant-numeric:lining-nums tabular-nums; color:var(--offwhite); }
+    .inicio-var { margin:0; font-size:14px; }
+    .inicio-var.pos, .pos { color:#9FD3B5; }
+    .inicio-var.neg, .neg { color:#F1A9A6; }
+    .inicio-hero-lado { display:grid; gap:10px; min-width:200px; }
+    .inicio-mini { background:color-mix(in srgb, var(--offwhite) 9%, transparent); border:1px solid color-mix(in srgb, var(--offwhite) 14%, transparent); border-radius:var(--raio); padding:12px 16px; display:flex; flex-direction:column; gap:2px; }
+    .inicio-mini span { font-size:12px; color:var(--verde-claro); }
+    .inicio-mini strong { font:500 19px/1.2 var(--serif); font-variant-numeric:lining-nums tabular-nums; }
+    .inicio-kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:20px; }
+    .inicio-kpi { background:var(--card); border:1px solid var(--linha); border-left:4px solid var(--cor); border-radius:var(--raio); padding:16px 18px; min-width:0; box-shadow:0 1px 2px rgba(19,39,33,.04); }
+    .inicio-kpi span { display:block; font-size:12px; color:var(--cinza-texto); }
+    .inicio-kpi strong { display:block; margin:6px 0 4px; font:500 clamp(18px,1.7vw,24px)/1.15 var(--serif); color:var(--verde-profundo); font-variant-numeric:lining-nums tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .inicio-kpi p { margin:0; font-size:12px; }
+    .inicio-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px; align-items:start; }
+    .inicio-grid > section.card { margin:0; }
+    .inicio-canvas { position:relative; height:280px; }
+    .inicio-duas { display:grid; grid-template-columns:minmax(150px, 200px) minmax(0, 1fr); gap:20px; align-items:center; }
+    .inicio-canvas-rosca { position:relative; height:200px; }
+    .inicio-legenda { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+    .inicio-legenda li { display:grid; grid-template-columns:12px minmax(0,1fr) auto auto; gap:8px; align-items:center; font-size:13px; }
+    .inicio-legenda .bolinha { width:10px; height:10px; border-radius:50%; }
+    .inicio-legenda .nome { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .inicio-lista { list-style:none; margin:0; padding:0; }
+    .inicio-lista li { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--areia); flex-wrap:wrap; }
+    .inicio-lista li:last-child { border-bottom:0; }
+    .inicio-lista .direita { text-align:right; display:flex; flex-direction:column; align-items:flex-end; font-size:13px; }
+    .inicio-lista .alerta { color:var(--vermelho); font-size:12px; }
+    .inicio-atalhos { display:flex; flex-wrap:wrap; gap:8px; }
+    @media (max-width: 720px) {
+      .inicio-hero { grid-template-columns:1fr; padding:24px 20px; }
+      .inicio-hero-lado { min-width:0; }
+      .inicio-grid { grid-template-columns:1fr; }
+      .inicio-duas { grid-template-columns:1fr; }
+    }
   </style>
   <link rel="stylesheet" href="./css/print.css" media="print" />
 </head>

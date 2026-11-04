@@ -10,6 +10,7 @@ export const TITULOS_FERRAMENTA = {
 };
 
 const TITULOS_SECAO = {
+  inicio: "Home",
   dashboard: "Visão do mês",
   lancamento: "Lançamentos",
   receitas: "Receitas e despesas",
@@ -81,6 +82,7 @@ export function shellAdmin(user, ativa, conteudo) {
 // ctx = { user, email, nome, modo: "cliente" | "admin", ano }
 export function shellPortal(ctx, secao, conteudo) {
   const itens = [
+    ["inicio", "Home"],
     ["dashboard", "Visão do mês"],
     ["lancamento", "Lançamentos"],
     ["receitas", "Receitas e despesas"],

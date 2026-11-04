@@ -1,7 +1,7 @@
 // Roteador único por hash + resolução de perfil (feita uma vez após o login).
 //
 // Rotas:
-//   cliente:            #/dashboard  #/lancamento  #/receitas  #/patrimonio  #/home  #/relatorio
+//   cliente:            #/inicio (Home, abertura)  #/dashboard  #/lancamento  #/receitas  #/patrimonio  #/home  #/relatorio
 //   admin:              #/admin/clientes  #/admin/dashboard  #/admin/oportunidade
 //   admin vê cliente:   #/cliente/{email codificado}/{secao}
 //   ferramentas:        #/metas  #/aposentadoria  #/open-finance  (Home Conect, na mesma página; admin usa #/cliente/{email}/{tipo})
@@ -14,6 +14,7 @@ import { carregarLancamentos, carregarParametros, carregarPatrimonio, carregarPr
 import { shellAdmin, shellPortal } from "./layout.js";
 import { renderLogin, renderNegado } from "./views/login.js";
 import { telaDashboard, desenharGrafico } from "./views/dashboard.js";
+import { telaInicio, desenharInicio } from "./views/inicio.js";
 import { telaLancamento } from "./views/lancamento.js";
 import { telaReceitas } from "./views/receitas.js";
 import { telaMeuPatrimonio } from "./views/meu-patrimonio.js";
@@ -26,7 +27,7 @@ import { telaOportunidade } from "./views/oportunidade.js";
 import { telaRelatorio } from "./views/relatorio.js";
 
 export const FERRAMENTAS = ["metas", "aposentadoria", "open-finance"];
-export const SECOES_CLIENTE = ["dashboard", "lancamento", "receitas", "patrimonio", "protecao", "home", "relatorio", ...FERRAMENTAS];
+export const SECOES_CLIENTE = ["inicio", "dashboard", "lancamento", "receitas", "patrimonio", "protecao", "home", "relatorio", ...FERRAMENTAS];
 export const SECOES_ADMIN = ["clientes", "dashboard", "oportunidade"];
 
 const MSG_SEM_ACESSO = "Este e-mail não tem acesso ao sistema. Fale com o administrador.";
@@ -173,7 +174,7 @@ async function renderizar() {
       return redirecionar(hashAdmin("clientes"));
     }
     if (rota.tipo === "cliente") return await renderPortal(contextoProprio(), rota.secao, token);
-    return redirecionar("#/dashboard");
+    return redirecionar("#/inicio");
   } catch (err) {
     console.error(err);
     if (token === seq) {
@@ -209,13 +210,20 @@ async function renderPortal(ctx, secao, token) {
     return;
   }
 
-  const [lancamentos, params, patrimonio] = await Promise.all([
+  const [lancamentos, params, patrimonio, protecao] = await Promise.all([
     carregarLancamentos(ctx.email),
     carregarParametros(ctx.email),
     carregarPatrimonio(ctx.email),
+    carregarProtecao(ctx.email),
   ]);
   if (token !== seq) return;
-  const dados = { lancamentos, params, patrimonio };
+  const dados = { lancamentos, params, patrimonio, protecao };
+
+  if (secao === "inicio") {
+    slot.replaceChildren(telaInicio(ctx, dados));
+    desenharInicio(ctx, dados);
+    return;
+  }
 
   if (secao === "home") return slot.replaceChildren(telaHome(ctx));
   if (secao === "lancamento") return slot.replaceChildren(telaLancamento(ctx, dados));
