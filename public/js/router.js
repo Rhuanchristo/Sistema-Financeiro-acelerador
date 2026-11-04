@@ -10,13 +10,14 @@
 import { auth, db, doc, getDoc, updateDoc, onAuthStateChanged } from "./firebase.js";
 import { emailKey, ANO_ATUAL } from "./format.js";
 import { el, setView } from "./ui.js";
-import { carregarLancamentos, carregarParametros, carregarPatrimonio } from "./data.js";
+import { carregarLancamentos, carregarParametros, carregarPatrimonio, carregarProtecao } from "./data.js";
 import { shellAdmin, shellPortal } from "./layout.js";
 import { renderLogin, renderNegado } from "./views/login.js";
 import { telaDashboard, desenharGrafico } from "./views/dashboard.js";
 import { telaLancamento } from "./views/lancamento.js";
 import { telaReceitas } from "./views/receitas.js";
 import { telaMeuPatrimonio } from "./views/meu-patrimonio.js";
+import { telaProtecao } from "./views/protecao.js";
 import { telaHome, telaOpenFinance } from "./views/home.js";
 import { telaMetas } from "./views/metas.js";
 import { montarAposentadoria } from "./views/aposentadoria.js";
@@ -25,7 +26,7 @@ import { telaOportunidade } from "./views/oportunidade.js";
 import { telaRelatorio } from "./views/relatorio.js";
 
 export const FERRAMENTAS = ["metas", "aposentadoria", "open-finance"];
-export const SECOES_CLIENTE = ["dashboard", "lancamento", "receitas", "patrimonio", "home", "relatorio", ...FERRAMENTAS];
+export const SECOES_CLIENTE = ["dashboard", "lancamento", "receitas", "patrimonio", "protecao", "home", "relatorio", ...FERRAMENTAS];
 export const SECOES_ADMIN = ["clientes", "dashboard", "oportunidade"];
 
 const MSG_SEM_ACESSO = "Este e-mail não tem acesso ao sistema. Fale com o administrador.";
@@ -201,6 +202,12 @@ async function renderPortal(ctx, secao, token) {
   }
   if (secao === "aposentadoria") return montarAposentadoria(ctx, slot);
   if (secao === "open-finance") return slot.replaceChildren(telaOpenFinance());
+
+  if (secao === "protecao") {
+    const apolices = await carregarProtecao(ctx.email);
+    if (token === seq) slot.replaceChildren(telaProtecao(ctx, apolices));
+    return;
+  }
 
   const [lancamentos, params, patrimonio] = await Promise.all([
     carregarLancamentos(ctx.email),

@@ -3,7 +3,7 @@
 import { db, doc, addDoc, updateDoc, deleteDoc, collection } from "../firebase.js";
 import { brl, num, pct, MESES } from "../format.js";
 import { CATEGORIAS_PATRIMONIO } from "../calc.js";
-import { el, acao, abrirModal, toast } from "../ui.js";
+import { el, acao, abrirModal, toast, campoMes } from "../ui.js";
 import { recarregar, ir, hashFerramenta } from "../router.js";
 
 const TIPO = Object.fromEntries(CATEGORIAS_PATRIMONIO.map(([k, l, t]) => [k, { rotulo: l, tipo: t }]));
@@ -146,7 +146,7 @@ function modalEditar(ctx, bloco, it) {
 
 // Registra o valor de um mês específico (monta a linha do gráfico).
 function modalAtualizarMes(ctx, it) {
-  const mes = el("input", { type: "month", value: mesAtualYM() });
+  const mes = campoMes(mesAtualYM());
   const val = el("input", { type: "text", inputmode: "decimal", value: campo(valorNoMes(it, mesAtualYM())), placeholder: "0,00" });
   const modal = abrirModal({ titulo: "Atualizar valor — " + (it.descricao || "item"), largura: 460 });
   const salvar = async () => {

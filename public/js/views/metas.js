@@ -2,7 +2,7 @@
 import { db, doc, addDoc, updateDoc, deleteDoc, collection } from "../firebase.js";
 import { brl, num, addMeses, mesNome, mesAtual, mesesEntre } from "../format.js";
 import { listar } from "../data.js";
-import { el, kpi, acao, abrirModal, toast } from "../ui.js";
+import { el, kpi, acao, abrirModal, toast, campoMes } from "../ui.js";
 import { recarregar } from "../router.js";
 
 // Executa uma gravação; se falhar mostra mensagem amigável e devolve false.
@@ -33,7 +33,7 @@ function modalEditar(ctx, m) {
   const nome = el("input", { type: "text", value: m.nome || "", style: "min-width:220px" });
   const alvo = el("input", { type: "text", inputmode: "decimal", value: paraCampo(m.valorAlvo), class: "num", style: "width:140px" });
   const atual = el("input", { type: "text", inputmode: "decimal", value: paraCampo(m.valorAtual), class: "num", style: "width:140px" });
-  const prazo = el("input", { type: "month", value: m.mesAlvo || "" });
+  const prazo = campoMes(m.mesAlvo);
   const modal = abrirModal({ titulo: "Editar meta", largura: 560 });
 
   const salvar = async () => {
@@ -107,7 +107,7 @@ export async function telaMetas(ctx) {
   const nome = el("input", { type: "text", placeholder: "Ex.: Reserva de emergência", style: "min-width:220px" });
   const alvo = el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", class: "num", style: "width:140px" });
   const atual = el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", class: "num", style: "width:140px" });
-  const prazo = el("input", { type: "month", value: addMeses(hoje, 12) });
+  const prazo = campoMes(addMeses(hoje, 12));
 
   const salvar = async () => {
     if (!nome.value.trim()) return alert("Informe o nome da meta.");
