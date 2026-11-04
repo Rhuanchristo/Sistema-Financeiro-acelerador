@@ -106,8 +106,23 @@ export function abrirImportacao(ctx, dados) {
   const nomeNoPainel = (nome, tipo) => nomesDoPainel(tipo).find((n) => chaveDescricao(n) === chaveDescricao(nome)) || nome;
   let linhas = [];
 
+  // Marca ou desmarca todas as linhas de uma vez (entradas e saídas).
+  const botaoTodas = el("button", { class: "ghost", type: "button" }, "Selecionar todos");
+  const alternarTodas = () => {
+    const todasMarcadas = linhas.length > 0 && linhas.every((r) => r.inputs.incluir.checked);
+    for (const r of linhas) r.inputs.incluir.checked = !todasMarcadas;
+    atualizarBotaoTodas();
+    atualizarResumo();
+  };
+  const atualizarBotaoTodas = () => {
+    const todasMarcadas = linhas.length > 0 && linhas.every((r) => r.inputs.incluir.checked);
+    botaoTodas.textContent = todasMarcadas ? "Desmarcar todos" : "Selecionar todos";
+  };
+  botaoTodas.addEventListener("click", alternarTodas);
+
   const valorLinha = (r) => num(r.inputs.valor.value);
   const atualizarResumo = () => {
+    atualizarBotaoTodas();
     const marcadas = linhas.filter((r) => r.inputs.incluir.checked);
     const entradas = marcadas.filter((r) => r.inputs.tipo.value === "receita").reduce((s, r) => s + valorLinha(r), 0);
     const saidas = marcadas.filter((r) => r.inputs.tipo.value === "despesa").reduce((s, r) => s + valorLinha(r), 0);
@@ -246,7 +261,7 @@ export function abrirImportacao(ctx, dados) {
       el("button", { class: "ghost", onclick: (e) => acao(e.currentTarget, ler) }, "Ler arquivo"),
     ),
     status,
-    resumo,
+    el("div", { class: "row", style: "align-items:center;justify-content:space-between;margin:8px 0" }, resumo, botaoTodas),
     area,
     datalistReceitas,
     datalistDespesas,
