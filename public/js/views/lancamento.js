@@ -102,90 +102,158 @@ async function excluirLancamento(ctx, l, dados) {
   );
 }
 
-export function telaLancamento(ctx, dados) {
-  const tipo = el("select", {},
-    el("option", { value: "receita" }, "Receita"),
-    el("option", { value: "despesa" }, "Despesa"),
-  );
-  const datalist = el("datalist", { id: "sugestoes-categoria" });
-  const preencherSugestoes = () => {
-    datalist.replaceChildren(...SUGESTOES[tipo.value].map((s) => el("option", { value: s })));
+// Novo lançamento em popup, no estilo do modelo: direção, valor, data, descrição, estabelecimento,
+// meio de pagamento, parcelamento, quem, classificação e categoria.
+const CLASSIFICACOES = [
+  "Classificação neutra", "Despesas não obrigatórias", "Despesas obrigatórias", "Dívidas",
+  "Empresa e autônomo", "Financiamentos", "Investimentos", "Projetos", "Renda",
+];
+const CATEGORIAS_POR_CLASSIFICACAO = {
+  "Renda": ["Outras fontes de renda", "Renda Cliente", "Renda cônjuge"],
+};
+const MEIOS_PAGAMENTO = ["Pix", "Dinheiro", "Cartão de crédito", "Cartão de débito", "Transferência", "Boleto", "Débito automático"];
+
+const hojeISO = () => {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+};
+
+// Botões de escolha única com aparência de chip (como no modelo).
+function chips(opcoes, valorInicial, aoMudar) {
+  const estado = { valor: valorInicial };
+  const marcar = (btn, ativo) => {
+    btn.setAttribute("aria-pressed", String(ativo));
+    btn.style.background = ativo ? "#ECE7DE" : "#FFFFFF";
+    btn.style.borderColor = ativo ? "#132721" : "#DDD6CA";
+    btn.style.fontWeight = ativo ? "600" : "400";
   };
-  preencherSugestoes();
-  tipo.addEventListener("change", preencherSugestoes);
+  const botoes = opcoes.map(([valor, rotulo]) => {
+    const btn = el("button", { type: "button", class: "ghost", style: "border-radius:8px;padding:9px 14px;color:#2A2A2A;border:1px solid #DDD6CA;background:#FFFFFF" }, rotulo);
+    return { valor, btn };
+  });
+  botoes.forEach(({ valor, btn }) => {
+    marcar(btn, valor === valorInicial);
+    btn.addEventListener("click", () => {
+      estado.valor = valor;
+      botoes.forEach((x) => marcar(x.btn, x.valor === valor));
+      if (aoMudar) aoMudar(valor);
+    });
+  });
+  return { el: el("div", { style: "display:flex;flex-wrap:wrap;gap:8px" }, botoes.map((x) => x.btn)), valor: () => estado.valor };
+}
 
-  const entidade = el("select", {},
-    el("option", { value: "empresa" }, "Empresa"),
-    el("option", { value: "pessoa" }, "Pessoa física"),
+const secaoForm = (titulo, conteudo) => el("div", { style: "margin-bottom:18px" }, el("h3", { style: "margin:0 0 8px" }, titulo), conteudo);
+const grade2 = (...itens) => el("div", { style: "display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px" }, ...itens);
+
+function modalNovoLancamento(ctx) {
+  const modal = abrirModal({ titulo: "Novo lançamento", largura: 760 });
+  const direcao = chips([["receita", "Entrada"], ["despesa", "Saída"]], "despesa");
+  const quem = chips([["empresa", "Empresa"], ["pessoa", "Pessoa física"]], "empresa");
+  const valor = el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", class: "num", style: "width:100%" });
+  const data = el("input", { type: "date", value: hojeISO(), style: "width:100%" });
+  const descricao = el("input", { type: "text", placeholder: "Digite sua descrição", style: "width:100%" });
+  const estabelecimento = el("input", { type: "text", placeholder: "Digite o nome do estabelecimento", style: "width:100%" });
+  const meio = el("select", { style: "width:100%" },
+    el("option", { value: "" }, "Selecione o meio de pagamento"),
+    MEIOS_PAGAMENTO.map((m) => el("option", { value: m }, m)),
   );
-  const categoria = el("input", { type: "text", list: "sugestoes-categoria", placeholder: "Ex.: Aluguel", style: "min-width:200px" });
-  const descricao = el("input", { type: "text", placeholder: "Opcional", style: "min-width:200px" });
-  const valor = el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", class: "num", style: "width:140px" });
-  const mes = campoMes(mesAtual());
-  const forma = el("select", {},
-    el("option", { value: "unico" }, "Lançamento único"),
-    el("option", { value: "replicar" }, "Replicar (mesmo valor em cada mês)"),
+  const forma = el("select", { style: "width:100%" },
     el("option", { value: "parcelado" }, "Parcelado (divide o valor)"),
+    el("option", { value: "replicar" }, "Replicar (mesmo valor em cada mês)"),
   );
-  const parcelas = el("input", { type: "number", min: "2", max: "360", value: "12", style: "width:90px" });
-  parcelas.disabled = true;
+  const meses = el("input", { type: "number", min: "2", max: "360", value: "12", style: "width:100%" });
+  const blocoParcela = el("div", { style: "display:none;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-bottom:18px" },
+    el("label", {}, "Forma", forma),
+    el("label", {}, "Nº de meses", meses),
+  );
+  const preview = el("p", { class: "muted", style: "margin:-6px 0 14px" });
 
-  const preview = el("p", { class: "muted" });
   const atualizarPreview = () => {
     const total = num(valor.value);
-    const n = forma.value === "unico" ? 1 : Math.max(1, Math.floor(num(parcelas.value)));
-    if (!(total > 0) || !mes.value) {
+    const parcelado = parcela.valor() === "sim";
+    const n = parcelado ? Math.max(1, Math.floor(num(meses.value))) : 1;
+    const mesIni = data.value ? data.value.slice(0, 7) : "";
+    if (!(total > 0) || !mesIni) {
       preview.textContent = "";
       return;
     }
     if (n === 1) {
-      preview.textContent = "Lançamento único de " + brl(total) + " em " + mesNome(mes.value) + ".";
+      preview.textContent = "Lançamento único de " + brl(total) + " em " + mesNome(mesIni) + ".";
       return;
     }
-    const fim = mesNome(addMeses(mes.value, n - 1));
+    const fim = mesNome(addMeses(mesIni, n - 1));
     if (forma.value === "replicar") {
-      preview.textContent = n + " lançamentos de " + brl(total) + " por mês, de " + mesNome(mes.value) + " a " + fim + ". Total: " + brl(total * n) + ".";
+      preview.textContent = n + " lançamentos de " + brl(total) + " por mês, de " + mesNome(mesIni) + " a " + fim + ". Total: " + brl(total * n) + ".";
       return;
     }
     const base = Math.floor((total * 100) / n) / 100;
-    preview.textContent = n + " parcelas de aproximadamente " + brl(base) + ", de " + mesNome(mes.value) + " a " + fim + ". Total: " + brl(total) + ".";
+    preview.textContent = n + " parcelas de aproximadamente " + brl(base) + ", de " + mesNome(mesIni) + " a " + fim + ". Total: " + brl(total) + ".";
   };
-  for (const c of [tipo, valor, mes, parcelas]) {
+
+  const parcela = chips([["nao", "Não"], ["sim", "Sim"]], "nao", (v) => {
+    blocoParcela.style.display = v === "sim" ? "grid" : "none";
+    atualizarPreview();
+  });
+  for (const c of [valor, data, meses]) {
     c.addEventListener("input", atualizarPreview);
     c.addEventListener("change", atualizarPreview);
   }
-  forma.addEventListener("change", () => {
-    parcelas.disabled = forma.value === "unico";
-    atualizarPreview();
-  });
+  forma.addEventListener("change", atualizarPreview);
+
+  // Categoria: chips para as classificações que têm lista (ex.: Renda); nas demais, texto livre com sugestões.
+  let categoriaEscolhida = "";
+  let categoriaTemLista = false;
+  const categoriaTexto = el("input", { type: "text", list: "sugestoes-categoria", placeholder: "Digite a categoria", style: "width:100%" });
+  const datalist = el("datalist", { id: "sugestoes-categoria" },
+    [...SUGESTOES.receita, ...SUGESTOES.despesa].map((s) => el("option", { value: s })));
+  const boxCategoria = el("div", {});
+  const desenharCategoria = (classificacao) => {
+    const lista = CATEGORIAS_POR_CLASSIFICACAO[classificacao];
+    categoriaTemLista = !!lista;
+    categoriaEscolhida = "";
+    if (lista) {
+      const escolha = chips(lista.map((c) => [c, c]), "", (v) => { categoriaEscolhida = v; });
+      boxCategoria.replaceChildren(escolha.el);
+    } else {
+      categoriaTexto.value = "";
+      boxCategoria.replaceChildren(categoriaTexto);
+    }
+  };
+  const classificacao = chips(CLASSIFICACOES.map((c) => [c, c]), "", (v) => desenharCategoria(v));
+  desenharCategoria("");
 
   const salvar = async () => {
     const total = num(valor.value);
-    const n = forma.value === "unico" ? 1 : Math.floor(num(parcelas.value));
-    if (!categoria.value.trim()) return alert("Informe a categoria.");
+    const classif = classificacao.valor();
+    const cat = categoriaTemLista ? categoriaEscolhida : categoriaTexto.value.trim();
+    const mesIni = data.value ? data.value.slice(0, 7) : "";
+    const parcelado = parcela.valor() === "sim";
+    const n = parcelado ? Math.floor(num(meses.value)) : 1;
+    if (!data.value) return alert("Informe a data.");
     if (!(total > 0)) return alert("Informe um valor maior que zero.");
-    if (!mes.value) return alert("Informe o mês do primeiro lançamento.");
-    if (!(n >= 1 && n <= 360)) return alert("O número de lançamentos deve estar entre 1 e 360.");
-    const valores = forma.value === "parcelado" ? dividirValor(total, n) : Array(n).fill(total);
+    if (!classif) return alert("Escolha a classificação.");
+    if (!cat) return alert("Escolha ou informe a categoria.");
+    if (!(n >= 1 && n <= 360)) return alert("O número de meses deve estar entre 1 e 360.");
+    const valores = parcelado && forma.value === "parcelado" ? dividirValor(total, n) : Array(n).fill(total);
     if (valores.some((v) => !(v > 0))) return alert("O valor é pequeno demais para dividir em " + n + " parcelas.");
-    const cat = categoria.value.trim();
-    const desc = descricao.value.trim();
     const grupoId = novoGrupoId();
     const criadoEm = new Date().toISOString();
     const colecao = collection(db, "users", ctx.email, "lancamentos");
-    // Cada mês vira um lançamento próprio, para que possa ser editado separadamente.
-    // Todos vão em um único writeBatch (até 360): ou grava tudo, ou nada.
     const lote = writeBatch(db);
     valores.forEach((v, i) => {
       const novo = {
-        tipo: tipo.value,
+        tipo: direcao.valor(),
         categoria: cat,
-        descricao: desc,
+        classificacao: classif,
+        descricao: descricao.value.trim(),
+        estabelecimento: estabelecimento.value.trim(),
+        meioPagamento: meio.value,
+        data: data.value,
         valorTotal: v,
-        mesInicial: addMeses(mes.value, i),
+        mesInicial: addMeses(mesIni, i),
         parcelas: 1,
-        modo: forma.value,
-        entidade: entidade.value,
+        modo: n === 1 ? "unico" : forma.value,
+        entidade: quem.valor(),
         grupoId,
         criadoEm,
         criadoPor: ctx.user.email,
@@ -199,10 +267,30 @@ export function telaLancamento(ctx, dados) {
       avisarFalha(err, "gravar " + (n > 1 ? "os " + n + " lançamentos" : "o lançamento"));
       return;
     }
+    modal.fechar();
     recarregar();
   };
-  const botaoLancar = el("button", { onclick: () => acao(botaoLancar, salvar) }, "Lançar");
 
+  modal.trocar(
+    secaoForm("Direção do lançamento", direcao.el),
+    grade2(secaoForm("Valor", valor), secaoForm("Data", data)),
+    grade2(secaoForm("Descrição", descricao), secaoForm("Estabelecimento", estabelecimento)),
+    grade2(secaoForm("Meio de pagamento", meio), secaoForm("Lançamento parcelado", parcela.el)),
+    blocoParcela,
+    preview,
+    secaoForm("Quem", quem.el),
+    secaoForm("Classificação", classificacao.el),
+    secaoForm("Categoria", boxCategoria),
+    datalist,
+    el("div", { class: "row", style: "justify-content:flex-end;margin-top:20px" },
+      el("button", { class: "ghost", onclick: () => modal.fechar() }, "Cancelar"),
+      el("button", { onclick: (e) => acao(e.currentTarget, salvar) }, "Lançar"),
+    ),
+  );
+  atualizarPreview();
+}
+
+export function telaLancamento(ctx, dados) {
   const selecionados = new Set();
   const botaoExcluirSel = el("button", { class: "danger", style: "display:none", onclick: () => acao(botaoExcluirSel, excluirSelecionados) }, "Excluir selecionados");
   const atualizarSel = () => {
@@ -287,27 +375,12 @@ export function telaLancamento(ctx, dados) {
 
   return el("div", {},
     el("section", { class: "card" },
-      el("h2", {}, "Novo lançamento"),
-      el("div", { class: "row" },
-        el("label", {}, "Tipo", tipo),
-        el("label", {}, "Quem", entidade),
-        el("label", {}, "Categoria", categoria),
-        el("label", {}, "Valor", valor),
-        el("label", {}, "Mês do 1º lançamento", mes),
-      ),
-      el("div", { class: "row" },
-        el("label", {}, "Forma", forma),
-        el("label", {}, "Nº de meses", parcelas),
-        el("label", {}, "Descrição", descricao),
-        botaoLancar,
-      ),
-      preview,
-      datalist,
-    ),
-    el("section", { class: "card" },
       el("div", { class: "row", style: "justify-content:space-between;align-items:center" },
         el("h2", { style: "margin:0" }, "Lançamentos registrados"),
-        el("button", { class: "ghost", onclick: () => verificarDuplicados(ctx, dados) }, "Verificar duplicados"),
+        el("div", { class: "row", style: "gap:8px" },
+          el("button", { onclick: () => modalNovoLancamento(ctx) }, "+ Novo lançamento"),
+          el("button", { class: "ghost", onclick: () => verificarDuplicados(ctx, dados) }, "Verificar duplicados"),
+        ),
       ),
       el("div", { class: "row" },
         el("label", {}, "De (mês)", filtroDe),
