@@ -216,9 +216,11 @@ export async function telaMetas(ctx) {
     else if (vencida) terceiro = kpi("Falta (prazo vencido)", falta);
     else terceiro = kpi("Poupar por mês", falta / restantes);
 
-    const capa = m.imagem ? el("img", { src: m.imagem, alt: "Imagem do objetivo " + (m.nome || ""), style: "width:100%;height:220px;object-fit:cover;border-radius:10px;margin-bottom:16px;display:block" }) : null;
+    // Imagem quadrada no canto direito, ao lado dos indicadores; em tela estreita desce para baixo.
+    const capa = m.imagem ? el("img", { src: m.imagem, alt: "Imagem do objetivo " + (m.nome || ""), style: "width:200px;height:200px;flex:0 0 200px;object-fit:cover;border-radius:12px;display:block" }) : null;
     return el("section", { class: "card" },
-      capa,
+      el("div", { style: "display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap" },
+      el("div", { style: "flex:1 1 360px;min-width:0" },
       el("div", { class: "row", style: "justify-content:space-between;align-items:center" },
         el("div", { class: "row", style: "align-items:center;gap:10px" },
           el("h2", { style: "margin:0" }, m.nome),
@@ -239,6 +241,9 @@ export async function telaMetas(ctx) {
         kpi("Valor alvo", m.valorAlvo),
         kpi("Já acumulado", m.valorAtual),
         terceiro,
+      ),
+      ),
+      capa,
       ),
     );
   });
