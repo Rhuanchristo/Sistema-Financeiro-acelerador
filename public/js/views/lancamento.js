@@ -326,11 +326,18 @@ export function telaLancamento(ctx, dados) {
   const filtroDe = campoMes("", { vazio: true });
   const filtroAte = campoMes("", { vazio: true });
   const filtroCat = el("select", {}, [el("option", { value: "" }, "Todas as categorias"), ...categoriasUnicas.map((c) => el("option", { value: c }, c))]);
-  const filtroQuem = el("select", {},
-    el("option", { value: "" }, "Empresa e Pessoa física"),
-    el("option", { value: "empresa" }, "Empresa"),
-    el("option", { value: "pessoa" }, "Pessoa física"),
-  );
+  // Submenu: a lista e os totais mostram só a empresa ou só a pessoa física, para não misturar.
+  const visao = { valor: "empresa" };
+  const botoesVisao = [["empresa", "Empresa"], ["pessoa", "Pessoa física"]].map(([v, rotulo]) =>
+    el("button", { type: "button", onclick: () => { visao.valor = v; desenharTabela(); } }, rotulo));
+  const submenu = el("div", { class: "row", style: "gap:8px;margin:0 0 16px" }, botoesVisao);
+  const marcarVisao = () => {
+    ["empresa", "pessoa"].forEach((v, i) => {
+      const ativo = visao.valor === v;
+      botoesVisao[i].className = ativo ? "" : "ghost";
+      botoesVisao[i].setAttribute("aria-pressed", String(ativo));
+    });
+  };
   const areaTabela = el("div", { class: "scroll" });
   // Resumo separado por entidade: Empresa e Pessoa física somam só o que é de cada uma; o total é a soma das duas.
   const resumoFiltro = el("div", {});
@@ -347,7 +354,6 @@ export function telaLancamento(ctx, dados) {
       } })),
       el("th", {}, "Mês"),
       el("th", {}, "Tipo"),
-      el("th", {}, "Quem"),
       el("th", {}, "Categoria"),
       el("th", {}, "Descrição"),
       el("th", { class: "num" }, "Valor"),
@@ -362,7 +368,6 @@ export function telaLancamento(ctx, dados) {
       } })),
       el("td", {}, mesNome(l.mesInicial)),
       el("td", {}, l.tipo === "receita" ? "Receita" : "Despesa"),
-      el("td", {}, entidadeDe(l) === "empresa" ? "Empresa" : "Pessoa física"),
       el("td", {}, l.categoria),
       el("td", {}, l.descricao || "—"),
       el("td", { class: "num" }, brl(l.valorTotal)),
@@ -379,33 +384,33 @@ export function telaLancamento(ctx, dados) {
   );
 
   const desenharTabela = () => {
-    const periodo = dados.lancamentos.filter((l) => (!filtroDe.value || (l.mesInicial || "") >= filtroDe.value)
+    marcarVisao();
+    const daVisao = dados.lancamentos.filter((l) => entidadeDe(l) === visao.valor);
+    // Categorias só da visão escolhida; mantém a seleção se ela ainda existir.
+    const catAtual = filtroCat.value;
+    const cats = [...new Set(daVisao.map((l) => l.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    filtroCat.replaceChildren(el("option", { value: "" }, "Todas as categorias"), ...cats.map((c) => el("option", { value: c }, c)));
+    filtroCat.value = cats.includes(catAtual) ? catAtual : "";
+    const periodo = daVisao.filter((l) => (!filtroDe.value || (l.mesInicial || "") >= filtroDe.value)
       && (!filtroAte.value || (l.mesInicial || "") <= filtroAte.value)
       && (!filtroCat.value || l.categoria === filtroCat.value));
-    const filtrados = periodo
-      .filter((l) => !filtroQuem.value || entidadeDe(l) === filtroQuem.value)
-      .sort((a, b) => (b.mesInicial || "").localeCompare(a.mesInicial || ""));
-    const empresa = resumoDe(periodo.filter((l) => entidadeDe(l) === "empresa"));
-    const pessoa = resumoDe(periodo.filter((l) => entidadeDe(l) === "pessoa"));
-    const total = resumoDe(periodo);
+    const filtrados = periodo.sort((a, b) => (b.mesInicial || "").localeCompare(a.mesInicial || ""));
+    const r = resumoDe(periodo);
+    const nome = visao.valor === "empresa" ? "Empresa" : "Pessoa física";
     resumoFiltro.replaceChildren(
-      el("p", { class: "muted", style: "margin:0 0 8px" }, filtrados.length + " lançamento(s) na lista"),
-      el("div", { class: "inicio-kpis", style: "margin-bottom:16px" }, [
-        ["Empresa", empresa, "#2C4A3E"],
-        ["Pessoa física", pessoa, "#C9A96E"],
-        ["Total (empresa + pessoa física)", total, "#132721"],
-      ].map(([rotulo, r, cor]) => el("div", { class: "inicio-kpi", style: "--cor:" + cor },
-        el("span", {}, rotulo),
-        el("strong", {}, brl(r.saldo)),
-        el("p", { class: "muted" }, "Receitas " + brl(r.receitas) + " · Despesas " + brl(r.despesas)),
-      ))),
+      el("p", { class: "muted", style: "margin:0 0 8px" }, nome + " · " + filtrados.length + " lançamento(s) na lista"),
+      el("div", { class: "inicio-kpis", style: "margin-bottom:16px" },
+        el("div", { class: "inicio-kpi", style: "--cor:#2C4A3E" }, el("span", {}, "Receitas"), el("strong", {}, brl(r.receitas))),
+        el("div", { class: "inicio-kpi", style: "--cor:#B0413E" }, el("span", {}, "Despesas"), el("strong", {}, brl(r.despesas))),
+        el("div", { class: "inicio-kpi", style: "--cor:#C9A96E" }, el("span", {}, "Saldo"), el("strong", {}, brl(r.saldo))),
+      ),
     );
     atualizarSel();
     areaTabela.replaceChildren(filtrados.length === 0
       ? el("p", { class: "muted" }, "Nenhum lançamento encontrado com esses filtros.")
       : montarTabela(filtrados));
   };
-  for (const c of [filtroDe, filtroAte, filtroCat, filtroQuem]) c.addEventListener("change", desenharTabela);
+  for (const c of [filtroDe, filtroAte, filtroCat]) c.addEventListener("change", desenharTabela);
   desenharTabela();
 
   return el("div", {},
@@ -418,11 +423,11 @@ export function telaLancamento(ctx, dados) {
           el("button", { class: "ghost", onclick: () => verificarDuplicados(ctx, dados) }, "Verificar duplicados"),
         ),
       ),
+      submenu,
       el("div", { class: "row" },
         el("label", {}, "De (mês)", filtroDe),
         el("label", {}, "Até (mês)", filtroAte),
         el("label", {}, "Categoria", filtroCat),
-        el("label", {}, "Quem", filtroQuem),
       ),
       el("div", { class: "row", style: "justify-content:space-between;align-items:center" }, resumoFiltro, botaoExcluirSel),
       areaTabela,
