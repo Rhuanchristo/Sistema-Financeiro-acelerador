@@ -326,6 +326,8 @@ export function telaLancamento(ctx, dados) {
   const filtroDe = campoMes("", { vazio: true });
   const filtroAte = campoMes("", { vazio: true });
   const filtroCat = el("select", {}, [el("option", { value: "" }, "Todas as categorias"), ...categoriasUnicas.map((c) => el("option", { value: c }, c))]);
+  // Filtro por tipo (receitas ou despesas) e por classificação; as opções vêm dos lançamentos da visão escolhida.
+  const filtroClass = el("select", {}, el("option", { value: "" }, "Todas"));
   // Submenu: a lista e os totais mostram só a empresa ou só a pessoa física, para não misturar.
   const visao = { valor: "empresa" };
   const botoesVisao = [["empresa", "Empresa"], ["pessoa", "Pessoa física"]].map(([v, rotulo]) =>
@@ -391,9 +393,28 @@ export function telaLancamento(ctx, dados) {
     const cats = [...new Set(daVisao.map((l) => l.categoria).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
     filtroCat.replaceChildren(el("option", { value: "" }, "Todas as categorias"), ...cats.map((c) => el("option", { value: c }, c)));
     filtroCat.value = cats.includes(catAtual) ? catAtual : "";
+    const classAtual = filtroClass.value;
+    const classes = [...new Set(daVisao.map((l) => l.classificacao || "").filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    const temSemClass = daVisao.some((l) => !l.classificacao);
+    filtroClass.replaceChildren(
+      el("option", { value: "" }, "Todas"),
+      el("optgroup", { label: "Tipo" },
+        el("option", { value: "tipo:receita" }, "Receitas"),
+        el("option", { value: "tipo:despesa" }, "Despesas"),
+      ),
+      el("optgroup", { label: "Classificação" },
+        classes.map((c) => el("option", { value: "class:" + c }, c)),
+        temSemClass ? el("option", { value: "class:" }, "Sem classificação") : null,
+      ),
+    );
+    const valoresClass = [...filtroClass.options].map((o) => o.value);
+    filtroClass.value = valoresClass.includes(classAtual) ? classAtual : "";
     const periodo = daVisao.filter((l) => (!filtroDe.value || (l.mesInicial || "") >= filtroDe.value)
       && (!filtroAte.value || (l.mesInicial || "") <= filtroAte.value)
-      && (!filtroCat.value || l.categoria === filtroCat.value));
+      && (!filtroCat.value || l.categoria === filtroCat.value)
+      && (!filtroClass.value || (filtroClass.value.startsWith("tipo:")
+        ? l.tipo === filtroClass.value.slice(5)
+        : (l.classificacao || "") === filtroClass.value.slice(6))));
     const filtrados = periodo.sort((a, b) => (b.mesInicial || "").localeCompare(a.mesInicial || ""));
     const r = resumoDe(periodo);
     const nome = visao.valor === "empresa" ? "Empresa" : "Pessoa física";
@@ -410,7 +431,7 @@ export function telaLancamento(ctx, dados) {
       ? el("p", { class: "muted" }, "Nenhum lançamento encontrado com esses filtros.")
       : montarTabela(filtrados));
   };
-  for (const c of [filtroDe, filtroAte, filtroCat]) c.addEventListener("change", desenharTabela);
+  for (const c of [filtroDe, filtroAte, filtroCat, filtroClass]) c.addEventListener("change", desenharTabela);
   desenharTabela();
 
   return el("div", {},
@@ -428,6 +449,7 @@ export function telaLancamento(ctx, dados) {
         el("label", {}, "De (mês)", filtroDe),
         el("label", {}, "Até (mês)", filtroAte),
         el("label", {}, "Categoria", filtroCat),
+        el("label", {}, "Filtrar por (tipo ou classificação)", filtroClass),
       ),
       el("div", { class: "row", style: "justify-content:space-between;align-items:center" }, resumoFiltro, botaoExcluirSel),
       areaTabela,
