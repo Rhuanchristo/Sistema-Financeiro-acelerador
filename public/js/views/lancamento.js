@@ -332,7 +332,13 @@ export function telaLancamento(ctx, dados) {
     el("option", { value: "pessoa" }, "Pessoa física"),
   );
   const areaTabela = el("div", { class: "scroll" });
-  const resumoFiltro = el("p", { class: "muted" });
+  // Resumo separado por entidade: Empresa e Pessoa física somam só o que é de cada uma; o total é a soma das duas.
+  const resumoFiltro = el("div", {});
+  const resumoDe = (lista) => {
+    const receitas = soma(lista.filter((l) => l.tipo === "receita").map((l) => num(l.valorTotal)));
+    const despesas = soma(lista.filter((l) => l.tipo === "despesa").map((l) => num(l.valorTotal)));
+    return { receitas, despesas, saldo: receitas - despesas };
+  };
   const montarTabela = (ordenados) => el("table", {},
     el("thead", {}, el("tr", {},
       el("th", {}, el("input", { type: "checkbox", title: "Selecionar todos os visíveis", onchange: (e) => {
@@ -373,15 +379,27 @@ export function telaLancamento(ctx, dados) {
   );
 
   const desenharTabela = () => {
-    const filtrados = dados.lancamentos
-      .filter((l) => (!filtroDe.value || (l.mesInicial || "") >= filtroDe.value)
-        && (!filtroAte.value || (l.mesInicial || "") <= filtroAte.value)
-        && (!filtroCat.value || l.categoria === filtroCat.value)
-        && (!filtroQuem.value || entidadeDe(l) === filtroQuem.value))
+    const periodo = dados.lancamentos.filter((l) => (!filtroDe.value || (l.mesInicial || "") >= filtroDe.value)
+      && (!filtroAte.value || (l.mesInicial || "") <= filtroAte.value)
+      && (!filtroCat.value || l.categoria === filtroCat.value));
+    const filtrados = periodo
+      .filter((l) => !filtroQuem.value || entidadeDe(l) === filtroQuem.value)
       .sort((a, b) => (b.mesInicial || "").localeCompare(a.mesInicial || ""));
-    const receitas = soma(filtrados.filter((l) => l.tipo === "receita").map((l) => num(l.valorTotal)));
-    const despesas = soma(filtrados.filter((l) => l.tipo === "despesa").map((l) => num(l.valorTotal)));
-    resumoFiltro.textContent = filtrados.length + " lançamento(s) · Receitas: " + brl(receitas) + " · Despesas: " + brl(despesas);
+    const empresa = resumoDe(periodo.filter((l) => entidadeDe(l) === "empresa"));
+    const pessoa = resumoDe(periodo.filter((l) => entidadeDe(l) === "pessoa"));
+    const total = resumoDe(periodo);
+    resumoFiltro.replaceChildren(
+      el("p", { class: "muted", style: "margin:0 0 8px" }, filtrados.length + " lançamento(s) na lista"),
+      el("div", { class: "inicio-kpis", style: "margin-bottom:16px" }, [
+        ["Empresa", empresa, "#2C4A3E"],
+        ["Pessoa física", pessoa, "#C9A96E"],
+        ["Total (empresa + pessoa física)", total, "#132721"],
+      ].map(([rotulo, r, cor]) => el("div", { class: "inicio-kpi", style: "--cor:" + cor },
+        el("span", {}, rotulo),
+        el("strong", {}, brl(r.saldo)),
+        el("p", { class: "muted" }, "Receitas " + brl(r.receitas) + " · Despesas " + brl(r.despesas)),
+      ))),
+    );
     atualizarSel();
     areaTabela.replaceChildren(filtrados.length === 0
       ? el("p", { class: "muted" }, "Nenhum lançamento encontrado com esses filtros.")
