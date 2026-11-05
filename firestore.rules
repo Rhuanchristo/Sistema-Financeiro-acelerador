@@ -2,7 +2,7 @@ rules_version = '2';
 
 // Modelo de dados
 //   admins/{email}                          -> administradores (documento existe = admin)
-//   users/{email}                           -> cadastro do cliente (nome, ativo, criadoEm)
+//   users/{email}                           -> cadastro do cliente (nome, ativo, criadoEm, ultimoAcesso)
 //   users/{email}/lancamentos/{id}          -> receitas e despesas lançadas (cliente e admin)
 //   users/{email}/patrimonio/{id}           -> itens do patrimônio (cliente e admin)
 //   users/{email}/config/parametros         -> impostoPct e comissaoPct (somente admin)
@@ -27,6 +27,12 @@ service cloud.firestore {
       return isSignedIn() && myEmail() == userEmail;
     }
 
+    // Cliente desativado pelo administrador perde acesso aos próprios dados.
+    function isClienteAtivo(userEmail) {
+      return isOwner(userEmail)
+        && get(/databases/$(database)/documents/users/$(userEmail)).data.get('ativo', false) == true;
+    }
+
     function lancamentoValido() {
       return request.resource.data.tipo in ['receita', 'despesa']
         && request.resource.data.valorTotal is number
@@ -48,44 +54,56 @@ service cloud.firestore {
     }
 
     match /users/{userEmail} {
+      // O próprio cadastro continua legível para o app saber se o acesso está ativo.
       allow read: if isAdmin() || isOwner(userEmail);
-      allow create, update, delete: if isAdmin();
+      allow create, delete: if isAdmin();
+      // O cliente ativo só pode registrar o próprio último acesso; o resto é do admin.
+      allow update: if isAdmin()
+        || (isClienteAtivo(userEmail)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoAcesso'])
+          && request.resource.data.ultimoAcesso is string);
 
       match /lancamentos/{id} {
-        allow read: if isAdmin() || isOwner(userEmail);
-        allow create, update: if isAdmin() || (isOwner(userEmail) && lancamentoValido());
-        allow delete: if isAdmin() || isOwner(userEmail);
+        allow read: if isAdmin() || isClienteAtivo(userEmail);
+        allow create, update: if isAdmin() || (isClienteAtivo(userEmail) && lancamentoValido());
+        allow delete: if isAdmin() || isClienteAtivo(userEmail);
       }
 
       match /config/aposentadoria {
-        allow read: if isAdmin() || isOwner(userEmail);
-        allow create, update: if isAdmin() || (isOwner(userEmail) && request.resource.data.rendaDesejada is number);
+        allow read: if isAdmin() || isClienteAtivo(userEmail);
+        allow create, update: if isAdmin() || (isClienteAtivo(userEmail) && request.resource.data.rendaDesejada is number);
       }
 
       match /projetos/{id} {
-        allow read: if isAdmin() || isOwner(userEmail);
-        allow create, update: if isAdmin() || (isOwner(userEmail) && request.resource.data.valorTotal is number && request.resource.data.valorTotal > 0);
-        allow delete: if isAdmin() || isOwner(userEmail);
+        allow read: if isAdmin() || isClienteAtivo(userEmail);
+        allow create, update: if isAdmin() || (isClienteAtivo(userEmail) && request.resource.data.valorTotal is number && request.resource.data.valorTotal > 0);
+        allow delete: if isAdmin() || isClienteAtivo(userEmail);
       }
 
       match /metas/{id} {
-        allow read: if isAdmin() || isOwner(userEmail);
-        allow create, update: if isAdmin() || (isOwner(userEmail) && request.resource.data.valorAlvo is number && request.resource.data.valorAlvo > 0);
-        allow delete: if isAdmin() || isOwner(userEmail);
+        allow read: if isAdmin() || isClienteAtivo(userEmail);
+        allow create, update: if isAdmin() || (isClienteAtivo(userEmail) && request.resource.data.valorAlvo is number && request.resource.data.valorAlvo > 0);
+        allow delete: if isAdmin() || isClienteAtivo(userEmail);
       }
 
       match /patrimonio/{id} {
-        allow read: if isAdmin() || isOwner(userEmail);
-        allow create, update: if isAdmin() || (isOwner(userEmail) && patrimonioValido());
-        allow delete: if isAdmin() || isOwner(userEmail);
+        allow read: if isAdmin() || isClienteAtivo(userEmail);
+        allow create, update: if isAdmin() || (isClienteAtivo(userEmail) && patrimonioValido());
+        allow delete: if isAdmin() || isClienteAtivo(userEmail);
       }
 
       // Demais subcoleções (config, fluxo legado): leitura pelo dono, escrita só pelo admin.
       match /{document=**} {
-        allow read: if isAdmin() || isOwner(userEmail);
+        allow read: if isAdmin() || isClienteAtivo(userEmail);
         allow write: if isAdmin();
       }
     }
+
+    // Consultas collectionGroup (visão consolidada e Oportunidade): somente admin.
+    match /{path=**}/lancamentos/{id} { allow read: if isAdmin(); }
+    match /{path=**}/patrimonio/{id} { allow read: if isAdmin(); }
+    match /{path=**}/projetos/{id} { allow read: if isAdmin(); }
+    match /{path=**}/metas/{id} { allow read: if isAdmin(); }
 
     // Qualquer outro caminho é negado.
     match /{document=**} {

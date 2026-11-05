@@ -1,0 +1,38 @@
+/* Impressão / PDF do relatório (carregado com media="print"). */
+@page { size: A4; margin: 14mm 12mm; }
+
+html, body { background: #fff !important; color: #111 !important; }
+body { font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* Some com a navegação e os controles. */
+header, .sidebar, button, .no-print, input, select { display: none !important; }
+.corpo { display: block !important; min-height: 0 !important; }
+.conteudo, main { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+.scroll { overflow: visible !important; }
+
+/* Cartões sóbrios, sem sombra nem fundo. */
+section.card { border: 0 !important; border-radius: 0 !important; padding: 0 !important; margin: 0 0 8mm !important; background: #fff !important; }
+.kpis { grid-template-columns: repeat(4, 1fr) !important; gap: 6px !important; margin-bottom: 4mm !important; }
+.kpi { border: 1px solid #bbb !important; border-radius: 4px !important; padding: 6px 8px !important; background: #fff !important; }
+.kpi span { color: #555 !important; font-size: 8.5pt !important; }
+.kpi strong { font-size: 12pt !important; }
+
+h1 { font-size: 18pt !important; color: #111 !important; }
+h2 { font-size: 13pt !important; color: #132721 !important; border-bottom: 1.5px solid #132721; padding-bottom: 2px; margin-bottom: 4mm !important; }
+h3 { font-size: 10pt !important; color: #333 !important; }
+.muted { color: #555 !important; }
+
+table { font-size: 9.5pt !important; width: 100% !important; }
+th, td { padding: 4px 6px !important; border-bottom: 1px solid #ccc !important; white-space: normal !important; }
+th { color: #333 !important; }
+tr.total td { border-top: 1.5px solid #111 !important; }
+thead { display: table-header-group; }
+tr, .kpi, .rel-bloco { break-inside: avoid; page-break-inside: avoid; }
+
+.rel-colunas { grid-template-columns: 1fr 1fr !important; }
+.rel-capa { border-bottom: 2px solid #132721 !important; padding-bottom: 4mm !important; }
+
+/* Uma seção por página a partir do patrimônio; o resumo e as despesas ficam juntos na primeira. */
+.rel-secao h2 { break-after: avoid; page-break-after: avoid; }
+.rel-secao:nth-of-type(n+4) { break-before: page; page-break-before: always; }
+.rel-rodape { margin-top: 6mm; font-size: 8.5pt !important; text-align: center; }
