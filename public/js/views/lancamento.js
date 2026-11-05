@@ -340,7 +340,7 @@ export function telaLancamento(ctx, dados) {
   };
   const areaTabela = el("div", { class: "scroll" });
   // Resumo separado por entidade: Empresa e Pessoa física somam só o que é de cada uma; o total é a soma das duas.
-  const resumoFiltro = el("div", {});
+  const resumoFiltro = el("div", { style: "flex:1 1 100%;min-width:0" });
   const resumoDe = (lista) => {
     const receitas = soma(lista.filter((l) => l.tipo === "receita").map((l) => num(l.valorTotal)));
     const despesas = soma(lista.filter((l) => l.tipo === "despesa").map((l) => num(l.valorTotal)));
@@ -399,10 +399,10 @@ export function telaLancamento(ctx, dados) {
     const nome = visao.valor === "empresa" ? "Empresa" : "Pessoa física";
     resumoFiltro.replaceChildren(
       el("p", { class: "muted", style: "margin:0 0 8px" }, nome + " · " + filtrados.length + " lançamento(s) na lista"),
-      el("div", { class: "inicio-kpis", style: "margin-bottom:16px" },
+      el("div", { class: "lanc-resumo" },
         el("div", { class: "inicio-kpi", style: "--cor:#2C4A3E" }, el("span", {}, "Receitas"), el("strong", {}, brl(r.receitas))),
         el("div", { class: "inicio-kpi", style: "--cor:#B0413E" }, el("span", {}, "Despesas"), el("strong", {}, brl(r.despesas))),
-        el("div", { class: "inicio-kpi", style: "--cor:#C9A96E" }, el("span", {}, "Saldo"), el("strong", {}, brl(r.saldo))),
+        el("div", { class: "inicio-kpi", style: "--cor:#C9A96E" }, el("span", {}, "Lucro líquido"), el("strong", {}, brl(r.saldo))),
       ),
     );
     atualizarSel();
