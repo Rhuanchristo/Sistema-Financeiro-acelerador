@@ -7,7 +7,8 @@ import { el, acao, abrirModal, toast } from "../ui.js";
 import { recarregar } from "../router.js";
 
 let grafico = null;
-const GRADE_CARTAS = "display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:16px";
+// Cada carta ocupa a largura toda da página, para os valores aparecerem inteiros.
+const GRADE_CARTAS = "display:grid;grid-template-columns:minmax(0,1fr);gap:16px";
 
 const soma = (lista) => lista.reduce((s, x) => s + num(x), 0);
 const pctTxt = (v) => (Number(v) * 100).toFixed(1).replace(".", ",") + "%";
