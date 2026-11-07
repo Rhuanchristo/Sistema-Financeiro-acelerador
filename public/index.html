@@ -258,6 +258,12 @@
     .credito-kpis { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; margin:14px 0 10px; }
     .credito-kpis4 { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; margin-bottom:16px; }
     .credito-kpis .inicio-kpi, .credito-kpis4 .inicio-kpi { min-width:0; }
+    .credito-dash { min-width:0; }
+    .credito-dash:fullscreen, .credito-dash:-webkit-full-screen { background:var(--offwhite); padding:40px clamp(24px, 4vw, 80px); overflow:auto; }
+    .credito-dash:fullscreen .credito-kpis4, .credito-dash:-webkit-full-screen .credito-kpis4 { gap:20px; }
+    .credito-dash:fullscreen .inicio-kpi, .credito-dash:-webkit-full-screen .inicio-kpi { padding:28px 30px; }
+    .credito-dash:fullscreen .inicio-kpi strong, .credito-dash:-webkit-full-screen .inicio-kpi strong { font-size:clamp(28px, 3vw, 46px); white-space:normal; }
+    .credito-dash:fullscreen .inicio-canvas, .credito-dash:-webkit-full-screen .inicio-canvas { height:56vh; }
     .credito-pag summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; font-weight:500; border-top:1px solid var(--areia); }
     .credito-pag summary::-webkit-details-marker { display:none; }
     .credito-pag summary::after { content:"▾"; color:var(--verde); font-size:16px; transition:transform .2s ease; }

@@ -285,38 +285,67 @@ export function indicadoresCredito(cartas) {
   };
 }
 
+// Abre ou fecha a tela cheia de um elemento (com fallback para navegadores antigos).
+function alternarTelaCheia(id) {
+  const alvo = document.getElementById(id);
+  if (!alvo) return;
+  const doc = document;
+  if (doc.fullscreenElement || doc.webkitFullscreenElement) {
+    const sair = doc.exitFullscreen || doc.webkitExitFullscreen;
+    if (sair) sair.call(doc);
+    return;
+  }
+  const pedir = alvo.requestFullscreen || alvo.webkitRequestFullscreen;
+  if (!pedir) return toast("Este navegador não permite tela cheia.");
+  try {
+    const p = pedir.call(alvo);
+    if (p && p.catch) p.catch(() => toast("Não foi possível abrir em tela cheia."));
+  } catch (err) {
+    toast("Não foi possível abrir em tela cheia.");
+  }
+}
+
 // Página "Crédito" (sub-item de Meu Patrimônio).
 export function telaCredito(ctx, cartas) {
   const lista = cartas || [];
   const ind = indicadoresCredito(lista);
   const botaoAdicionar = ctx.modo === "admin" ? el("button", { onclick: () => modalCarta(ctx) }, "+ Adicionar carta") : null;
 
+  const cabecalhoCartas = el("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px" },
+    el("h2", { style: "margin:0" }, "Cartas de consórcio"),
+    botaoAdicionar,
+  );
+  if (!lista.length) {
+    return el("div", {},
+      cabecalhoCartas,
+      el("p", { class: "muted" }, ctx.modo === "admin"
+        ? "Nenhuma carta cadastrada. Use + Adicionar carta para registrar as cartas de consórcio do cliente."
+        : "Nenhuma carta de consórcio cadastrada."),
+    );
+  }
+
+  // Quadro de totais: ocupa a largura toda e pode abrir em tela cheia.
   return el("div", {},
-    el("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px" },
-      el("h2", { style: "margin:0" }, "Dashboard de crédito"),
-      botaoAdicionar,
+    el("section", { id: "credito-dash", class: "credito-dash" },
+      el("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px" },
+        el("h2", { style: "margin:0" }, "Dashboard de crédito"),
+        el("button", { class: "ghost", onclick: () => alternarTelaCheia("credito-dash") }, "Tela cheia"),
+      ),
+      el("div", { class: "credito-kpis4" },
+        kpi("Total de crédito contratado", brl(ind.creditoContratado), ind.qtdCartas + " carta(s)", "#2C4A3E"),
+        kpi("Crédito contemplado", brl(ind.creditoContemplado), ind.qtdContempladas + " carta(s) contemplada(s)", "#C9A96E"),
+        kpi("Total de valores pagos", brl(ind.totalPago), ind.qtdParcelas + " pagamento(s)", "#B0413E"),
+        kpi("Lucro no crédito", brl(ind.lucro), "Crédito contemplado menos a dívida dessas cartas", ind.lucro >= 0 ? "#2C4A3E" : "#B0413E"),
+      ),
+      el("section", { class: "card", style: "margin:0 0 20px" },
+        el("h3", { style: "margin:0 0 10px" }, "Pagamentos por mês"),
+        ind.pagamentos.length
+          ? el("div", { class: "inicio-canvas" }, el("canvas", { id: "credito-pagamentos" }))
+          : el("p", { class: "muted" }, "Os pagamentos registrados aparecem aqui, mês a mês."),
+      ),
     ),
-    lista.length
-      ? el("div", {},
-        el("div", { class: "credito-kpis4" },
-          kpi("Total de crédito contratado", brl(ind.creditoContratado), ind.qtdCartas + " carta(s)", "#2C4A3E"),
-          kpi("Crédito contemplado", brl(ind.creditoContemplado), ind.qtdContempladas + " carta(s) contemplada(s)", "#C9A96E"),
-          kpi("Total de valores pagos", brl(ind.totalPago), ind.qtdParcelas + " pagamento(s)", "#B0413E"),
-          kpi("Lucro no crédito", brl(ind.lucro), "Crédito contemplado menos a dívida dessas cartas", ind.lucro >= 0 ? "#2C4A3E" : "#B0413E"),
-        ),
-        el("section", { class: "card", style: "margin:0 0 20px" },
-          el("h3", { style: "margin:0 0 10px" }, "Pagamentos por mês"),
-          ind.pagamentos.length
-            ? el("div", { class: "inicio-canvas" }, el("canvas", { id: "credito-pagamentos" }))
-            : el("p", { class: "muted" }, "Os pagamentos registrados aparecem aqui, mês a mês."),
-        ),
-        el("h2", { style: "margin:0 0 12px" }, "Cartas de consórcio"),
-        el("div", { style: GRADE_CARTAS }, lista.map((c) => cartaCredito(ctx, c))),
-      )
-      : el("div", {},
-        el("p", { class: "muted" }, ctx.modo === "admin"
-          ? "Nenhuma carta cadastrada. Use + Adicionar carta para registrar as cartas de consórcio do cliente."
-          : "Nenhuma carta de consórcio cadastrada.")),
+    cabecalhoCartas,
+    el("div", { style: GRADE_CARTAS }, lista.map((c) => cartaCredito(ctx, c))),
   );
 }
 
