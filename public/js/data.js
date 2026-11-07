@@ -3,7 +3,7 @@ import { db, doc, getDoc, getDocs, deleteDoc, collection } from "./firebase.js";
 import { PARAMETROS_PADRAO } from "../firebase-config.js";
 
 // Todas as subcoleções de users/{email}. Ao criar uma nova, inclua aqui para a exclusão não deixar dados para trás.
-export const SUBCOLECOES_USUARIO = ["lancamentos", "patrimonio", "metas", "projetos", "fluxo", "config", "protecao"];
+export const SUBCOLECOES_USUARIO = ["lancamentos", "patrimonio", "metas", "projetos", "fluxo", "config", "protecao", "consorcios"];
 
 export async function listar(caminho) {
   const snap = await getDocs(collection(db, ...caminho));
@@ -15,6 +15,7 @@ export async function listar(caminho) {
 export const carregarLancamentos = (email) => listar(["users", email, "lancamentos"]);
 export const carregarPatrimonio = (email) => listar(["users", email, "patrimonio"]);
 export const carregarProtecao = (email) => listar(["users", email, "protecao"]);
+export const carregarConsorcios = (email) => listar(["users", email, "consorcios"]);
 
 export async function carregarParametros(email) {
   const snap = await getDoc(doc(db, "users", email, "config", "parametros"));

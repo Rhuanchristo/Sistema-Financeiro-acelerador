@@ -10,7 +10,7 @@
 import { auth, db, doc, getDoc, updateDoc, onAuthStateChanged } from "./firebase.js";
 import { emailKey, ANO_ATUAL } from "./format.js";
 import { el, setView } from "./ui.js";
-import { carregarLancamentos, carregarParametros, carregarPatrimonio, carregarProtecao } from "./data.js";
+import { carregarLancamentos, carregarParametros, carregarPatrimonio, carregarProtecao, carregarConsorcios } from "./data.js";
 import { shellAdmin, shellPortal } from "./layout.js";
 import { renderLogin, renderNegado } from "./views/login.js";
 import { telaDashboard, desenharGrafico } from "./views/dashboard.js";
@@ -18,6 +18,7 @@ import { telaInicio, desenharInicio } from "./views/inicio.js";
 import { telaLancamento } from "./views/lancamento.js";
 import { telaReceitas } from "./views/receitas.js";
 import { telaMeuPatrimonio } from "./views/meu-patrimonio.js";
+import { telaCredito } from "./views/credito.js";
 import { telaProtecao } from "./views/protecao.js";
 import { telaHome, telaOpenFinance } from "./views/home.js";
 import { telaMetas } from "./views/metas.js";
@@ -228,7 +229,11 @@ async function renderPortal(ctx, secao, token) {
   if (secao === "home") return slot.replaceChildren(telaHome(ctx));
   if (secao === "lancamento") return slot.replaceChildren(telaLancamento(ctx, dados));
   if (secao === "receitas") return slot.replaceChildren(telaReceitas(ctx, dados));
-  if (secao === "patrimonio") return slot.replaceChildren(telaMeuPatrimonio(ctx, dados));
+  if (secao === "patrimonio") {
+    const cartas = await carregarConsorcios(ctx.email);
+    if (token !== seq) return;
+    return slot.replaceChildren(telaMeuPatrimonio(ctx, dados, telaCredito(ctx, cartas)));
+  }
   if (secao === "relatorio") return slot.replaceChildren(telaRelatorio(ctx, dados));
   slot.replaceChildren(telaDashboard(ctx, dados));
   desenharGrafico(ctx, dados);
