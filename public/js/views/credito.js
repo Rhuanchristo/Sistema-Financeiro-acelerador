@@ -7,7 +7,7 @@ import { el, acao, abrirModal, toast } from "../ui.js";
 import { recarregar } from "../router.js";
 
 let grafico = null;
-const GRADE_CARTAS = "display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px";
+const GRADE_CARTAS = "display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:16px";
 
 const soma = (lista) => lista.reduce((s, x) => s + num(x), 0);
 const pctTxt = (v) => (Number(v) * 100).toFixed(1).replace(".", ",") + "%";
@@ -213,10 +213,10 @@ function cartaCredito(ctx, c) {
   const t = totaisCarta(c);
   const ordenados = t.pagamentos.map((p, i) => ({ ...p, i })).sort((a, b) => (a.data || "").localeCompare(b.data || ""));
   const barra = t.divida ? Math.min(100, (t.pago / t.divida) * 100) : 0;
-  return el("section", { class: "card", style: "margin:0" },
-    el("div", { style: "display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:flex-start" },
-      el("div", {},
-        el("h3", { style: "margin:0" }, c.administradora || "Carta de consórcio"),
+  return el("section", { class: "card", style: "margin:0;min-width:0" },
+    el("div", { style: "display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start" },
+      el("div", { style: "min-width:0" },
+        el("h3", { style: "margin:0;overflow-wrap:anywhere" }, c.administradora || "Carta de consórcio"),
         el("p", { class: "muted", style: "margin:4px 0 0" }, "Grupo " + (c.grupo || "—") + " · Cota " + (c.cota || "—") + " · Adquirida em " + dataBR(c.dataAquisicao)),
         el("p", { style: "margin:6px 0 0;font-size:12px;font-weight:500;color:" + (c.contemplada ? "var(--verde)" : "var(--cinza-texto, #6E6A65)") },
           c.contemplada ? "Contemplada" + (c.dataContemplacao ? " em " + dataBR(c.dataContemplacao) : "") : "Não contemplada"),
@@ -228,36 +228,39 @@ function cartaCredito(ctx, c) {
         )
         : null,
     ),
-    el("div", { class: "lanc-resumo", style: "margin:14px 0 10px" },
+    el("div", { class: "credito-kpis" },
       kpi("Valor do crédito", brl(c.valorCredito), null, "#2C4A3E"),
       kpi("Valor da dívida", brl(t.divida), "Total a pagar na carta", "#B0413E"),
       kpi("Falta pagar", brl(t.falta), t.quitado ? "Quitada" : "Restante da dívida", "#C9A96E"),
     ),
     el("div", { style: "margin:4px 0 14px" },
-      el("div", { class: "muted", style: "display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px" },
+      el("div", { class: "muted", style: "display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:4px" },
         el("span", {}, "Total já pago: " + brl(t.pago) + " (" + t.pagamentos.length + " pagamento(s))"),
         el("span", {}, pctTxt(t.divida ? t.pago / t.divida : 0)),
       ),
       el("div", { style: "height:10px;border-radius:999px;background:var(--areia);overflow:hidden" },
         el("div", { style: "height:100%;width:" + barra.toFixed(1) + "%;background:var(--verde);border-radius:999px" })),
     ),
-    el("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px" },
-      el("strong", {}, "Pagamentos"),
-      ctx.modo === "admin" ? el("button", { class: "ghost", onclick: () => modalPagamento(ctx, c) }, "+ Registrar pagamento") : null,
+    // Pagamentos recolhidos: a seta abre e fecha a lista.
+    el("details", { class: "credito-pag" },
+      el("summary", {}, "Pagamentos (" + t.pagamentos.length + ")"),
+      ctx.modo === "admin"
+        ? el("div", { style: "margin:4px 0 8px" }, el("button", { class: "ghost", onclick: () => modalPagamento(ctx, c) }, "+ Registrar pagamento"))
+        : null,
+      ordenados.length
+        ? el("ul", { class: "inicio-lista" }, ordenados.map((p) =>
+          el("li", {},
+            el("div", { style: "min-width:0" },
+              el("strong", {}, dataBR(p.data)),
+              el("span", { class: "muted" }, p.obs ? " · " + p.obs : ""),
+            ),
+            el("div", { class: "direita" },
+              el("strong", {}, brl(p.valor)),
+              ctx.modo === "admin" ? el("button", { class: "ghost", style: "margin-top:4px;padding:2px 8px", onclick: (e) => acao(e.currentTarget, () => excluirPagamento(ctx, c, p.i)) }, "Excluir") : null,
+            ),
+          )))
+        : el("p", { class: "muted" }, "Nenhum pagamento registrado ainda."),
     ),
-    ordenados.length
-      ? el("ul", { class: "inicio-lista", style: "max-height:260px;overflow-y:auto" }, ordenados.map((p) =>
-        el("li", {},
-          el("div", {},
-            el("strong", {}, dataBR(p.data)),
-            el("span", { class: "muted" }, p.obs ? " · " + p.obs : ""),
-          ),
-          el("div", { class: "direita" },
-            el("strong", {}, brl(p.valor)),
-            ctx.modo === "admin" ? el("button", { class: "ghost", style: "margin-top:4px;padding:2px 8px", onclick: (e) => acao(e.currentTarget, () => excluirPagamento(ctx, c, p.i)) }, "Excluir") : null,
-          ),
-        )))
-      : el("p", { class: "muted" }, "Nenhum pagamento registrado ainda."),
   );
 }
 
@@ -295,7 +298,7 @@ export function telaCredito(ctx, cartas) {
     ),
     lista.length
       ? el("div", {},
-        el("div", { class: "lanc-resumo", style: "margin-bottom:16px" },
+        el("div", { class: "credito-kpis4" },
           kpi("Total de crédito contratado", brl(ind.creditoContratado), ind.qtdCartas + " carta(s)", "#2C4A3E"),
           kpi("Crédito contemplado", brl(ind.creditoContemplado), ind.qtdContempladas + " carta(s) contemplada(s)", "#C9A96E"),
           kpi("Total de valores pagos", brl(ind.totalPago), ind.qtdParcelas + " pagamento(s)", "#B0413E"),

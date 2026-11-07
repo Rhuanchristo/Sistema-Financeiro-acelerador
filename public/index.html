@@ -254,6 +254,21 @@
       .lanc-resumo .inicio-kpi strong { font-size:15px; }
       .lanc-resumo .inicio-kpi p { display:none; }
     }
+    /* Crédito: indicadores e pagamentos recolhíveis, adaptados à largura da tela. */
+    .credito-kpis { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; margin:14px 0 10px; }
+    .credito-kpis4 { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; margin-bottom:16px; }
+    .credito-kpis .inicio-kpi, .credito-kpis4 .inicio-kpi { min-width:0; }
+    .credito-pag summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; font-weight:500; border-top:1px solid var(--areia); }
+    .credito-pag summary::-webkit-details-marker { display:none; }
+    .credito-pag summary::after { content:"▾"; color:var(--verde); font-size:16px; transition:transform .2s ease; }
+    .credito-pag[open] summary::after { transform:rotate(180deg); }
+    @media (max-width: 900px) {
+      .credito-kpis4 { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .credito-kpis { grid-template-columns:1fr; }
+      .credito-kpis4 { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    }
     .inicio-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:20px; align-items:stretch; }
     .inicio-grid > section.card { margin:0; display:flex; flex-direction:column; min-width:0; }
     .inicio-grid > section.card > .inicio-canvas, .inicio-grid > section.card > .inicio-duas { margin-top:auto; }
