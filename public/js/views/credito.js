@@ -82,7 +82,7 @@ function blocoReajustes(c) {
   const lista = el("div", {});
   const itens = [];
   const desenhar = () => {
-    lista.replaceChildren(itens.map((it) => el("div", { class: "row", style: "align-items:flex-end;margin-bottom:6px" },
+    lista.replaceChildren(...itens.map((it) => el("div", { class: "row", style: "align-items:flex-end;margin-bottom:6px" },
       el("label", {}, "Ano", it.ano),
       el("label", {}, "Crédito (%)", it.cred),
       el("label", {}, "Parcela (%)", it.par),
