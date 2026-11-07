@@ -27,7 +27,13 @@ function totaisCarta(c) {
   const pagamentos = Array.isArray(c.pagamentos) ? c.pagamentos : [];
   const pago = soma(pagamentos.map((p) => p.valor));
   const divida = num(c.valorDivida);
-  return { pagamentos, pago, divida, falta: Math.max(0, divida - pago), quitado: divida > 0 && pago >= divida };
+  const incCredito = num(c.incCredito);
+  const incParcela = num(c.incParcela);
+  return {
+    pagamentos, pago, divida, falta: Math.max(0, divida - pago), quitado: divida > 0 && pago >= divida,
+    incCredito, creditoCorrigido: num(c.valorCredito) * (1 + incCredito / 100),
+    incParcela, parcelaCorrigida: num(c.valorParcela) * (1 + incParcela / 100),
+  };
 }
 
 async function gravar(fn, msg) {
@@ -74,7 +80,9 @@ function modalCarta(ctx, c = {}) {
     contemplada: el("input", { type: "checkbox", checked: !!c.contemplada }),
     dataCont: el("input", { type: "date", value: c.dataContemplacao || "" }),
     parcelas: el("input", { type: "number", min: "0", step: "1", placeholder: "0", value: iniciaisAtuais.length ? String(iniciaisAtuais.length) : "" }),
-    valorParcela: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: iniciaisAtuais[0] ? campo(iniciaisAtuais[0].valor) : "" }),
+    valorParcela: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: c.valorParcela ? campo(c.valorParcela) : (iniciaisAtuais[0] ? campo(iniciaisAtuais[0].valor) : "") }),
+    incCredito: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: c.incCredito ? campo(c.incCredito) : "" }),
+    incParcela: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: c.incParcela ? campo(c.incParcela) : "" }),
   };
   const previa = el("p", { class: "muted", style: "margin:12px 0 0" });
   const atualizarPrevia = () => {
@@ -112,6 +120,9 @@ function modalCarta(ctx, c = {}) {
       valorDivida,
       contemplada: f.contemplada.checked,
       dataContemplacao: f.contemplada.checked ? (f.dataCont.value || "") : "",
+      valorParcela,
+      incCredito: num(f.incCredito.value),
+      incParcela: num(f.incParcela.value),
       atualizadoEm: new Date().toISOString(),
     };
     const geradas = qtdPagas > 0 ? parcelasIniciais(f.data.value, qtdPagas, valorParcela) : [];
@@ -142,6 +153,8 @@ function modalCarta(ctx, c = {}) {
       el("label", {}, "Data da contemplação", f.dataCont),
       el("label", {}, "Parcelas já pagas", f.parcelas),
       el("label", {}, "Valor de cada parcela", f.valorParcela),
+      el("label", {}, "Correção do crédito (INCC %)", f.incCredito),
+      el("label", {}, "Correção da parcela (INCC %)", f.incParcela),
     ),
     previa,
     el("div", { class: "row", style: "justify-content:flex-end;margin-top:16px" },
@@ -221,6 +234,10 @@ function cartaCredito(ctx, c) {
         el("p", { class: "muted", style: "margin:4px 0 0" }, "Grupo " + (c.grupo || "—") + " · Cota " + (c.cota || "—") + " · Adquirida em " + dataBR(c.dataAquisicao)),
         el("p", { style: "margin:6px 0 0;font-size:12px;font-weight:500;color:" + (c.contemplada ? "var(--verde)" : "var(--cinza-texto, #6E6A65)") },
           c.contemplada ? "Contemplada" + (c.dataContemplacao ? " em " + dataBR(c.dataContemplacao) : "") : "Não contemplada"),
+        c.valorParcela
+          ? el("p", { class: "muted", style: "margin:4px 0 0;font-size:13px" },
+            "Parcela " + brl(c.valorParcela) + (t.incParcela ? " · corrigida pelo INCC: " + brl(t.parcelaCorrigida) + " (" + campo(c.incParcela) + "%)" : ""))
+          : null,
       ),
       ctx.modo === "admin"
         ? el("div", { style: "display:flex;gap:6px;flex-wrap:wrap" },
@@ -230,7 +247,7 @@ function cartaCredito(ctx, c) {
         : null,
     ),
     el("div", { class: "credito-kpis" },
-      kpi("Valor do crédito", brl(c.valorCredito), null, "#2C4A3E"),
+      kpi("Valor do crédito", brl(c.valorCredito), t.incCredito ? "Corrigido pelo INCC: " + brl(t.creditoCorrigido) + " (" + campo(c.incCredito) + "%)" : "Sem correção informada", "#2C4A3E"),
       kpi("Valor da dívida", brl(t.divida), "Total a pagar na carta", "#B0413E"),
       kpi("Falta pagar", brl(t.falta), t.quitado ? "Quitada" : "Restante da dívida", "#C9A96E"),
     ),
