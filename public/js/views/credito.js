@@ -56,8 +56,13 @@ function parcelasIniciais(dataAquisicao, quantidade, valor) {
   return out;
 }
 
+// Parcelas criadas pelo registro inicial (ao cadastrar a carta). Só elas são trocadas na edição.
+const ehRegistroInicial = (p) => String(p.obs || "").endsWith("(registro inicial)");
+
 function modalCarta(ctx, c = {}) {
   const novo = !c.id;
+  const pagamentosAtuais = Array.isArray(c.pagamentos) ? c.pagamentos : [];
+  const iniciaisAtuais = pagamentosAtuais.filter(ehRegistroInicial);
   const f = {
     adm: el("input", { type: "text", value: c.administradora || "", placeholder: "Ex.: Porto Seguro Consórcios" }),
     grupo: el("input", { type: "text", value: c.grupo || "", placeholder: "Ex.: 1234" }),
@@ -67,16 +72,16 @@ function modalCarta(ctx, c = {}) {
     divida: el("input", { type: "text", inputmode: "decimal", value: campo(c.valorDivida), placeholder: "0,00" }),
     contemplada: el("input", { type: "checkbox", checked: !!c.contemplada }),
     dataCont: el("input", { type: "date", value: c.dataContemplacao || "" }),
-    parcelas: el("input", { type: "number", min: "0", step: "1", placeholder: "0" }),
-    valorParcela: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00" }),
+    parcelas: el("input", { type: "number", min: "0", step: "1", placeholder: "0", value: iniciaisAtuais.length ? String(iniciaisAtuais.length) : "" }),
+    valorParcela: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: iniciaisAtuais[0] ? campo(iniciaisAtuais[0].valor) : "" }),
   };
   const previa = el("p", { class: "muted", style: "margin:12px 0 0" });
   const atualizarPrevia = () => {
     const qtd = Math.floor(Number(f.parcelas.value) || 0);
     const v = num(f.valorParcela.value);
-    if (!(qtd > 0)) return (previa.textContent = "Se já houver parcelas pagas, informe a quantidade e o valor de cada uma para registrar o histórico.");
-    const total = qtd * v;
-    previa.textContent = qtd + " parcela(s) de " + brl(v) + " = " + brl(total) + " já pagos. Os pagamentos serão lançados a partir de " + (f.data.value ? dataBR(f.data.value) : "da data de aquisição") + ", mês a mês.";
+    const extra = novo ? "" : " As parcelas de registro inicial desta carta serão substituídas; pagamentos lançados à parte são mantidos.";
+    if (!(qtd > 0)) return (previa.textContent = "Informe a quantidade e o valor de cada parcela já paga para registrar o histórico." + extra);
+    previa.textContent = qtd + " parcela(s) de " + brl(v) + " = " + brl(qtd * v) + " já pagos. Os pagamentos serão lançados a partir de " + (f.data.value ? dataBR(f.data.value) : "da data de aquisição") + ", mês a mês." + extra;
   };
   f.parcelas.addEventListener("input", atualizarPrevia);
   f.valorParcela.addEventListener("input", atualizarPrevia);
@@ -91,9 +96,9 @@ function modalCarta(ctx, c = {}) {
     const valorDivida = num(f.divida.value);
     if (!(valorCredito > 0)) return alert("Informe o valor do crédito.");
     if (valorDivida < 0) return alert("O valor da dívida não pode ser negativo.");
-    const qtdPagas = novo ? Math.floor(Number(f.parcelas.value) || 0) : 0;
+    const qtdPagas = Math.floor(Number(f.parcelas.value) || 0);
     const valorParcela = num(f.valorParcela.value);
-    if (novo && qtdPagas > 0) {
+    if (qtdPagas > 0) {
       if (!f.data.value) return alert("Informe a data de aquisição para registrar as parcelas já pagas.");
       if (!(valorParcela > 0)) return alert("Informe o valor da parcela.");
     }
@@ -108,12 +113,16 @@ function modalCarta(ctx, c = {}) {
       dataContemplacao: f.contemplada.checked ? (f.dataCont.value || "") : "",
       atualizadoEm: new Date().toISOString(),
     };
+    const geradas = qtdPagas > 0 ? parcelasIniciais(f.data.value, qtdPagas, valorParcela) : [];
     const ok = c.id
-      ? await gravar(() => updateDoc(doc(db, "users", ctx.email, "consorcios", c.id), { ...dados, atualizadoPor: ctx.user.email }),
-        "Não foi possível salvar. Verifique a conexão e tente de novo.")
+      ? await gravar(() => updateDoc(doc(db, "users", ctx.email, "consorcios", c.id), {
+        ...dados,
+        pagamentos: [...pagamentosAtuais.filter((p) => !ehRegistroInicial(p)), ...geradas],
+        atualizadoPor: ctx.user.email,
+      }), "Não foi possível salvar. Verifique a conexão e tente de novo.")
       : await gravar(() => addDoc(collection(db, "users", ctx.email, "consorcios"), {
         ...dados,
-        pagamentos: qtdPagas > 0 ? parcelasIniciais(f.data.value, qtdPagas, valorParcela) : [],
+        pagamentos: geradas,
         criadoPor: ctx.user.email,
       }), "Não foi possível adicionar. Verifique a conexão e tente de novo.");
     if (!ok) return;
@@ -130,10 +139,10 @@ function modalCarta(ctx, c = {}) {
       el("label", {}, "Valor da dívida (total a pagar)", f.divida),
       el("label", {}, "Contemplada", f.contemplada),
       el("label", {}, "Data da contemplação", f.dataCont),
-      novo ? el("label", {}, "Parcelas já pagas", f.parcelas) : null,
-      novo ? el("label", {}, "Valor de cada parcela", f.valorParcela) : null,
+      el("label", {}, "Parcelas já pagas", f.parcelas),
+      el("label", {}, "Valor de cada parcela", f.valorParcela),
     ),
-    novo ? previa : null,
+    previa,
     el("div", { class: "row", style: "justify-content:flex-end;margin-top:16px" },
       el("button", { class: "ghost", onclick: () => modal.fechar() }, "Cancelar"),
       el("button", { onclick: (e) => acao(e.currentTarget, salvar) }, c.id ? "Salvar alterações" : "Adicionar"),
