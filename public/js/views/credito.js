@@ -27,12 +27,12 @@ function totaisCarta(c) {
   const pagamentos = Array.isArray(c.pagamentos) ? c.pagamentos : [];
   const pago = soma(pagamentos.map((p) => p.valor));
   const divida = num(c.valorDivida);
-  const incCredito = num(c.incCredito);
-  const incParcela = num(c.incParcela);
+  const aplicados = reajustesAplicados(c);
   return {
     pagamentos, pago, divida, falta: Math.max(0, divida - pago), quitado: divida > 0 && pago >= divida,
-    incCredito, creditoCorrigido: num(c.valorCredito) * (1 + incCredito / 100),
-    incParcela, parcelaCorrigida: num(c.valorParcela) * (1 + incParcela / 100),
+    aplicados,
+    creditoCorrigido: num(c.valorCredito) * fatorReajuste(aplicados, "incCredito"),
+    parcelaCorrigida: num(c.valorParcela) * fatorReajuste(aplicados, "incParcela"),
   };
 }
 
@@ -66,6 +66,52 @@ function parcelasIniciais(dataAquisicao, quantidade, valor) {
 // Parcelas criadas pelo registro inicial (ao cadastrar a carta). Só elas são trocadas na edição.
 const ehRegistroInicial = (p) => String(p.obs || "").endsWith("(registro inicial)");
 
+// Reajustes de janeiro (INCC): só valem a partir do ano seguinte ao da aquisição e até o ano atual.
+function reajustesAplicados(c) {
+  const anoAtual = new Date().getFullYear();
+  const anoAquisicao = Number(String(c.dataAquisicao || "").slice(0, 4)) || anoAtual;
+  return (Array.isArray(c.reajustes) ? c.reajustes : [])
+    .filter((r) => Number(r.ano) > anoAquisicao && Number(r.ano) <= anoAtual)
+    .sort((a, b) => Number(a.ano) - Number(b.ano));
+}
+const fatorReajuste = (lista, campo) => lista.reduce((f, r) => f * (1 + num(r[campo]) / 100), 1);
+
+// Lista editável de reajustes (ano, % do crédito e % da parcela), com botão para adicionar e remover.
+function blocoReajustes(c) {
+  const linhas = (Array.isArray(c.reajustes) ? c.reajustes : []).map((r) => ({ ano: r.ano, cred: r.incCredito, par: r.incParcela }));
+  const lista = el("div", {});
+  const itens = [];
+  const desenhar = () => {
+    lista.replaceChildren(itens.map((it) => el("div", { class: "row", style: "align-items:flex-end;margin-bottom:6px" },
+      el("label", {}, "Ano", it.ano),
+      el("label", {}, "Crédito (%)", it.cred),
+      el("label", {}, "Parcela (%)", it.par),
+      el("button", { class: "danger", type: "button", onclick: () => { itens.splice(itens.indexOf(it), 1); desenhar(); } }, "Remover"),
+    )));
+  };
+  const criar = (r = {}) => {
+    const it = {
+      ano: el("input", { type: "number", min: "2000", step: "1", placeholder: "Ex.: 2027", value: r.ano ? String(r.ano) : "" }),
+      cred: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: r.cred ? campo(r.cred) : "" }),
+      par: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: r.par ? campo(r.par) : "" }),
+    };
+    itens.push(it);
+    return it;
+  };
+  linhas.forEach((r) => criar(r));
+  desenhar();
+  const bloco = el("div", {},
+    el("p", { class: "muted", style: "margin:14px 0 6px" }, "Reajustes de janeiro (INCC). Informe o percentual de cada ano; ele vale para o crédito e para a parcela."),
+    lista,
+    el("button", { class: "ghost", type: "button", onclick: () => { criar(); desenhar(); } }, "+ Adicionar reajuste de janeiro"),
+  );
+  const coletar = () => itens
+    .map((it) => ({ ano: Math.floor(Number(it.ano.value) || 0), incCredito: num(it.cred.value), incParcela: num(it.par.value) }))
+    .filter((r) => r.ano > 0)
+    .sort((a, b) => a.ano - b.ano);
+  return { el: bloco, coletar };
+}
+
 function modalCarta(ctx, c = {}) {
   const novo = !c.id;
   const pagamentosAtuais = Array.isArray(c.pagamentos) ? c.pagamentos : [];
@@ -81,9 +127,8 @@ function modalCarta(ctx, c = {}) {
     dataCont: el("input", { type: "date", value: c.dataContemplacao || "" }),
     parcelas: el("input", { type: "number", min: "0", step: "1", placeholder: "0", value: iniciaisAtuais.length ? String(iniciaisAtuais.length) : "" }),
     valorParcela: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: c.valorParcela ? campo(c.valorParcela) : (iniciaisAtuais[0] ? campo(iniciaisAtuais[0].valor) : "") }),
-    incCredito: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: c.incCredito ? campo(c.incCredito) : "" }),
-    incParcela: el("input", { type: "text", inputmode: "decimal", placeholder: "0,00", value: c.incParcela ? campo(c.incParcela) : "" }),
   };
+  const reajustes = blocoReajustes(c);
   const previa = el("p", { class: "muted", style: "margin:12px 0 0" });
   const atualizarPrevia = () => {
     const qtd = Math.floor(Number(f.parcelas.value) || 0);
@@ -121,8 +166,7 @@ function modalCarta(ctx, c = {}) {
       contemplada: f.contemplada.checked,
       dataContemplacao: f.contemplada.checked ? (f.dataCont.value || "") : "",
       valorParcela,
-      incCredito: num(f.incCredito.value),
-      incParcela: num(f.incParcela.value),
+      reajustes: reajustes.coletar(),
       atualizadoEm: new Date().toISOString(),
     };
     const geradas = qtdPagas > 0 ? parcelasIniciais(f.data.value, qtdPagas, valorParcela) : [];
@@ -153,10 +197,9 @@ function modalCarta(ctx, c = {}) {
       el("label", {}, "Data da contemplação", f.dataCont),
       el("label", {}, "Parcelas já pagas", f.parcelas),
       el("label", {}, "Valor de cada parcela", f.valorParcela),
-      el("label", {}, "Correção do crédito (INCC %)", f.incCredito),
-      el("label", {}, "Correção da parcela (INCC %)", f.incParcela),
     ),
     previa,
+    reajustes.el,
     el("div", { class: "row", style: "justify-content:flex-end;margin-top:16px" },
       el("button", { class: "ghost", onclick: () => modal.fechar() }, "Cancelar"),
       el("button", { onclick: (e) => acao(e.currentTarget, salvar) }, c.id ? "Salvar alterações" : "Adicionar"),
@@ -236,7 +279,11 @@ function cartaCredito(ctx, c) {
           c.contemplada ? "Contemplada" + (c.dataContemplacao ? " em " + dataBR(c.dataContemplacao) : "") : "Não contemplada"),
         c.valorParcela
           ? el("p", { class: "muted", style: "margin:4px 0 0;font-size:13px" },
-            "Parcela " + brl(c.valorParcela) + (t.incParcela ? " · corrigida pelo INCC: " + brl(t.parcelaCorrigida) + " (" + campo(c.incParcela) + "%)" : ""))
+            "Parcela " + brl(c.valorParcela) + (t.aplicados.length ? " · corrigida pelo INCC: " + brl(t.parcelaCorrigida) : ""))
+          : null,
+        t.aplicados.length
+          ? el("p", { class: "muted", style: "margin:4px 0 0;font-size:12px" },
+            "Reajustes de janeiro: " + t.aplicados.map((r) => r.ano + " (crédito " + campo(r.incCredito) + "%, parcela " + campo(r.incParcela) + "%)").join(" · "))
           : null,
       ),
       ctx.modo === "admin"
@@ -247,7 +294,7 @@ function cartaCredito(ctx, c) {
         : null,
     ),
     el("div", { class: "credito-kpis" },
-      kpi("Valor do crédito", brl(c.valorCredito), t.incCredito ? "Corrigido pelo INCC: " + brl(t.creditoCorrigido) + " (" + campo(c.incCredito) + "%)" : "Sem correção informada", "#2C4A3E"),
+      kpi("Valor do crédito", brl(c.valorCredito), t.aplicados.length ? "Corrigido pelo INCC: " + brl(t.creditoCorrigido) : "Sem reajuste aplicado ainda", "#2C4A3E"),
       kpi("Valor da dívida", brl(t.divida), "Total a pagar na carta", "#B0413E"),
       kpi("Falta pagar", brl(t.falta), t.quitado ? "Quitada" : "Restante da dívida", "#C9A96E"),
     ),
