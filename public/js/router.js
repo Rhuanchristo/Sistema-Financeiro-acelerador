@@ -28,7 +28,7 @@ import { telaOportunidade } from "./views/oportunidade.js";
 import { telaRelatorio } from "./views/relatorio.js";
 
 export const FERRAMENTAS = ["metas", "aposentadoria", "open-finance"];
-export const SECOES_CLIENTE = ["inicio", "dashboard", "lancamento", "receitas", "patrimonio", "protecao", "home", "relatorio", ...FERRAMENTAS];
+export const SECOES_CLIENTE = ["inicio", "dashboard", "lancamento", "receitas", "patrimonio", "credito", "protecao", "home", "relatorio", ...FERRAMENTAS];
 export const SECOES_ADMIN = ["clientes", "dashboard", "oportunidade"];
 
 const MSG_SEM_ACESSO = "Este e-mail não tem acesso ao sistema. Fale com o administrador.";
@@ -229,11 +229,12 @@ async function renderPortal(ctx, secao, token) {
   if (secao === "home") return slot.replaceChildren(telaHome(ctx));
   if (secao === "lancamento") return slot.replaceChildren(telaLancamento(ctx, dados));
   if (secao === "receitas") return slot.replaceChildren(telaReceitas(ctx, dados));
-  if (secao === "patrimonio") {
+  if (secao === "credito") {
     const cartas = await carregarConsorcios(ctx.email);
-    if (token !== seq) return;
-    return slot.replaceChildren(telaMeuPatrimonio(ctx, dados, telaCredito(ctx, cartas)));
+    if (token === seq) slot.replaceChildren(telaCredito(ctx, cartas));
+    return;
   }
+  if (secao === "patrimonio") return slot.replaceChildren(telaMeuPatrimonio(ctx, dados));
   if (secao === "relatorio") return slot.replaceChildren(telaRelatorio(ctx, dados));
   slot.replaceChildren(telaDashboard(ctx, dados));
   desenharGrafico(ctx, dados);

@@ -200,7 +200,7 @@ function cartaCredito(ctx, c) {
   );
 }
 
-// Bloco "Crédito" da aba Meu Patrimônio.
+// Página "Crédito" (sub-item de Meu Patrimônio).
 export function telaCredito(ctx, cartas) {
   const lista = cartas || [];
   const totais = lista.map(totaisCarta);
@@ -210,10 +210,11 @@ export function telaCredito(ctx, cartas) {
   const faltaTotal = soma(totais.map((t) => t.falta));
 
   return el("div", {},
-    el("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:28px 0 12px" },
-      el("h2", { style: "margin:0" }, "Crédito · Consórcios"),
+    el("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 6px" },
+      el("h2", { style: "margin:0" }, "Cartas de consórcio"),
       ctx.modo === "admin" ? el("button", { onclick: () => modalCarta(ctx) }, "+ Adicionar carta") : null,
     ),
+    el("p", { class: "muted", style: "margin:0 0 16px" }, "Cada carta mostra o crédito, a dívida, os pagamentos já feitos e o que ainda falta pagar."),
     lista.length
       ? el("div", {},
         el("div", { class: "lanc-resumo", style: "margin-bottom:16px" },

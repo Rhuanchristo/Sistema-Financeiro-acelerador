@@ -38,6 +38,7 @@
     .menu-item { display:block; width:100%; text-align:left; background:transparent; color:color-mix(in srgb, var(--offwhite) 72%, transparent); border:0; border-left:2px solid transparent; border-radius:0 var(--raio) var(--raio) 0; font:400 14px/1.4 var(--sans); padding:10px 14px; cursor:pointer; }
     .menu-item:hover { color:var(--offwhite); background:color-mix(in srgb, var(--verde) 55%, transparent); }
     .menu-item.ativo { color:var(--offwhite); background:var(--verde); border-left-color:var(--dourado); font-weight:500; }
+    .menu-item.menu-sub { padding-left:30px; font-size:13px; }
     .menu-voltar { color:var(--dourado); }
     .menu-grupo { font-size:12px; color:var(--verde-claro); padding:18px 14px 6px; }
     .sidebar-rodape { margin-top:auto; padding:20px 8px 0; border-top:1px solid color-mix(in srgb, var(--offwhite) 14%, transparent); display:flex; flex-direction:column; gap:10px; }
@@ -147,6 +148,7 @@
       .menu::-webkit-scrollbar { display:none; }
       .menu-item { width:auto; flex-shrink:0; white-space:nowrap; border-left:0; border-bottom:2px solid transparent; border-radius:0; padding:10px 12px 11px; min-height:44px; }
       .menu-item.ativo { background:transparent; border-bottom-color:var(--dourado); }
+      .menu-item.menu-sub { padding-left:12px; font-size:14px; }
       .menu-grupo { flex-shrink:0; white-space:nowrap; padding:13px 6px 0 14px; border-left:1px solid color-mix(in srgb, var(--offwhite) 18%, transparent); }
       .sidebar-rodape { display:none; }
 

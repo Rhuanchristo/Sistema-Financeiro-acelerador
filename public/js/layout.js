@@ -15,6 +15,7 @@ const TITULOS_SECAO = {
   lancamento: "Lançamentos",
   receitas: "Receitas e despesas",
   patrimonio: "Meu Patrimônio",
+  credito: "Crédito",
   protecao: "Proteção",
   relatorio: "Relatório mensal",
   home: "Conexões",
@@ -87,6 +88,7 @@ export function shellPortal(ctx, secao, conteudo) {
     ["lancamento", "Lançamentos"],
     ["receitas", "Receitas e despesas"],
     ["patrimonio", "Meu Patrimônio"],
+    ["credito", "Crédito", " menu-sub"],
     ["protecao", "Proteção"],
     ["relatorio", "Relatório"],
     ["home", "Conexões"],
@@ -98,7 +100,7 @@ export function shellPortal(ctx, secao, conteudo) {
   const ferramenta = TITULOS_FERRAMENTA[secao];
   const ativo = ferramenta ? "home" : secao;
   return casca({
-    itens: [...voltar, ...itens.map(([k, l]) => item(l, k === ativo, () => ir(hashCliente(ctx, k))))],
+    itens: [...voltar, ...itens.map(([k, l, extra]) => item(l, k === ativo, () => ir(hashCliente(ctx, k)), extra || ""))],
     quem: ctx.user.email,
     acoes: () => [botaoSair()],
     titulo: ferramenta || TITULOS_SECAO[secao] || "Painel",

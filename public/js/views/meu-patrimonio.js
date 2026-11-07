@@ -273,7 +273,7 @@ function desenharLinha(canvas, serie) {
 }
 
 // ---------- Tela ----------
-export function telaMeuPatrimonio(ctx, dados, credito = null) {
+export function telaMeuPatrimonio(ctx, dados) {
   destruirGraficos();
   const itens = dados.patrimonio;
   const ativosItens = itens.filter((i) => !ehDivida(i));
@@ -330,7 +330,6 @@ export function telaMeuPatrimonio(ctx, dados, credito = null) {
   return el("div", {},
     el("h2", { style: "margin:0 0 12px" }, "Bens e dívidas"),
     el("div", { style: GRADE }, blocos),
-    credito,
     el("h2", { style: "margin:28px 0 12px" }, "Resumo patrimonial"),
     el("div", { style: GRADE }, resumo),
     el("h2", { style: "margin:28px 0 12px" }, "Evolução do patrimônio líquido"),
