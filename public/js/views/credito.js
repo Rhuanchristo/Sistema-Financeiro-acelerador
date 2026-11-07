@@ -2,10 +2,11 @@
 // de cada parcela. Cada carta fica em users/{email}/consorcios/{id}; os pagamentos ficam dentro da carta.
 // Pelas regras, só o administrador grava; o cliente vê em modo somente leitura.
 import { db, doc, addDoc, updateDoc, deleteDoc, collection } from "../firebase.js";
-import { brl, num } from "../format.js";
+import { brl, num, MESES } from "../format.js";
 import { el, acao, abrirModal, toast } from "../ui.js";
 import { recarregar } from "../router.js";
 
+let grafico = null;
 const GRADE_CARTAS = "display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px";
 
 const soma = (lista) => lista.reduce((s, x) => s + num(x), 0);
@@ -48,6 +49,8 @@ function modalCarta(ctx, c = {}) {
     data: el("input", { type: "date", value: c.dataAquisicao || "" }),
     credito: el("input", { type: "text", inputmode: "decimal", value: campo(c.valorCredito), placeholder: "0,00" }),
     divida: el("input", { type: "text", inputmode: "decimal", value: campo(c.valorDivida), placeholder: "0,00" }),
+    contemplada: el("input", { type: "checkbox", checked: !!c.contemplada }),
+    dataCont: el("input", { type: "date", value: c.dataContemplacao || "" }),
   };
   const modal = abrirModal({ titulo: c.id ? "Editar carta de consórcio" : "Nova carta de consórcio", largura: 640 });
   const salvar = async () => {
@@ -64,6 +67,8 @@ function modalCarta(ctx, c = {}) {
       dataAquisicao: f.data.value || "",
       valorCredito,
       valorDivida,
+      contemplada: f.contemplada.checked,
+      dataContemplacao: f.contemplada.checked ? (f.dataCont.value || "") : "",
       atualizadoEm: new Date().toISOString(),
     };
     const ok = c.id
@@ -83,6 +88,8 @@ function modalCarta(ctx, c = {}) {
       el("label", {}, "Data de aquisição", f.data),
       el("label", {}, "Valor do crédito", f.credito),
       el("label", {}, "Valor da dívida (total a pagar)", f.divida),
+      el("label", {}, "Contemplada", f.contemplada),
+      el("label", {}, "Data da contemplação", f.dataCont),
     ),
     el("div", { class: "row", style: "justify-content:flex-end;margin-top:16px" },
       el("button", { class: "ghost", onclick: () => modal.fechar() }, "Cancelar"),
@@ -159,6 +166,8 @@ function cartaCredito(ctx, c) {
       el("div", {},
         el("h3", { style: "margin:0" }, c.administradora || "Carta de consórcio"),
         el("p", { class: "muted", style: "margin:4px 0 0" }, "Grupo " + (c.grupo || "—") + " · Cota " + (c.cota || "—") + " · Adquirida em " + dataBR(c.dataAquisicao)),
+        el("p", { style: "margin:6px 0 0;font-size:12px;font-weight:500;color:" + (c.contemplada ? "var(--verde)" : "var(--cinza-texto, #6E6A65)") },
+          c.contemplada ? "Contemplada" + (c.dataContemplacao ? " em " + dataBR(c.dataContemplacao) : "") : "Não contemplada"),
       ),
       ctx.modo === "admin"
         ? el("div", { style: "display:flex;gap:6px;flex-wrap:wrap" },
@@ -200,32 +209,83 @@ function cartaCredito(ctx, c) {
   );
 }
 
+// Indicadores do dashboard de Crédito.
+// Lucro no crédito = crédito das cartas contempladas menos a dívida total dessas cartas.
+export function indicadoresCredito(cartas) {
+  const lista = cartas || [];
+  const contempladas = lista.filter((c) => c.contemplada);
+  const todosPagamentos = lista.flatMap((c) => totaisCarta(c).pagamentos);
+  const creditoContratado = soma(lista.map((c) => c.valorCredito));
+  const creditoContemplado = soma(contempladas.map((c) => c.valorCredito));
+  const dividaContempladas = soma(contempladas.map((c) => c.valorDivida));
+  return {
+    qtdCartas: lista.length,
+    creditoContratado,
+    qtdContempladas: contempladas.length,
+    creditoContemplado,
+    totalPago: soma(todosPagamentos.map((p) => p.valor)),
+    qtdParcelas: todosPagamentos.length,
+    lucro: creditoContemplado - dividaContempladas,
+    pagamentos: todosPagamentos,
+  };
+}
+
 // Página "Crédito" (sub-item de Meu Patrimônio).
 export function telaCredito(ctx, cartas) {
   const lista = cartas || [];
-  const totais = lista.map(totaisCarta);
-  const creditoTotal = soma(lista.map((c) => c.valorCredito));
-  const dividaTotal = soma(totais.map((t) => t.divida));
-  const pagoTotal = soma(totais.map((t) => t.pago));
-  const faltaTotal = soma(totais.map((t) => t.falta));
+  const ind = indicadoresCredito(lista);
+  const botaoAdicionar = ctx.modo === "admin" ? el("button", { onclick: () => modalCarta(ctx) }, "+ Adicionar carta") : null;
 
   return el("div", {},
-    el("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 6px" },
-      el("h2", { style: "margin:0" }, "Cartas de consórcio"),
-      ctx.modo === "admin" ? el("button", { onclick: () => modalCarta(ctx) }, "+ Adicionar carta") : null,
+    el("div", { style: "display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px" },
+      el("h2", { style: "margin:0" }, "Dashboard de crédito"),
+      botaoAdicionar,
     ),
-    el("p", { class: "muted", style: "margin:0 0 16px" }, "Cada carta mostra o crédito, a dívida, os pagamentos já feitos e o que ainda falta pagar."),
     lista.length
       ? el("div", {},
         el("div", { class: "lanc-resumo", style: "margin-bottom:16px" },
-          kpi("Crédito total", brl(creditoTotal), lista.length + " carta(s)", "#2C4A3E"),
-          kpi("Dívida total", brl(dividaTotal), "Total a pagar nas cartas", "#B0413E"),
-          kpi("Falta pagar", brl(faltaTotal), "Já pago: " + brl(pagoTotal), "#C9A96E"),
+          kpi("Total de crédito contratado", brl(ind.creditoContratado), ind.qtdCartas + " carta(s)", "#2C4A3E"),
+          kpi("Crédito contemplado", brl(ind.creditoContemplado), ind.qtdContempladas + " carta(s) contemplada(s)", "#C9A96E"),
+          kpi("Total de valores pagos", brl(ind.totalPago), ind.qtdParcelas + " pagamento(s)", "#B0413E"),
+          kpi("Lucro no crédito", brl(ind.lucro), "Crédito contemplado menos a dívida dessas cartas", ind.lucro >= 0 ? "#2C4A3E" : "#B0413E"),
         ),
+        el("section", { class: "card", style: "margin:0 0 20px" },
+          el("h3", { style: "margin:0 0 10px" }, "Pagamentos por mês"),
+          ind.pagamentos.length
+            ? el("div", { class: "inicio-canvas" }, el("canvas", { id: "credito-pagamentos" }))
+            : el("p", { class: "muted" }, "Os pagamentos registrados aparecem aqui, mês a mês."),
+        ),
+        el("h2", { style: "margin:0 0 12px" }, "Cartas de consórcio"),
         el("div", { style: GRADE_CARTAS }, lista.map((c) => cartaCredito(ctx, c))),
       )
-      : el("p", { class: "muted" }, ctx.modo === "admin"
-        ? "Nenhuma carta cadastrada. Use + Adicionar carta para registrar as cartas de consórcio do cliente."
-        : "Nenhuma carta de consórcio cadastrada."),
+      : el("div", {},
+        el("p", { class: "muted" }, ctx.modo === "admin"
+          ? "Nenhuma carta cadastrada. Use + Adicionar carta para registrar as cartas de consórcio do cliente."
+          : "Nenhuma carta de consórcio cadastrada.")),
   );
+}
+
+// Desenha o gráfico de pagamentos por mês. Chamar depois que a tela estiver no documento.
+export function desenharCredito(cartas) {
+  if (grafico) { grafico.destroy(); grafico = null; }
+  const canvas = document.getElementById("credito-pagamentos");
+  if (!canvas || typeof Chart === "undefined") return;
+  const porMes = {};
+  for (const p of indicadoresCredito(cartas).pagamentos) {
+    const ym = String(p.data || "").slice(0, 7);
+    if (ym) porMes[ym] = (porMes[ym] || 0) + num(p.valor);
+  }
+  const meses = Object.keys(porMes).sort();
+  grafico = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: meses.map((ym) => MESES[Number(ym.slice(5, 7)) - 1] + "/" + ym.slice(2, 4)),
+      datasets: [{ label: "Pago no mês", data: meses.map((ym) => porMes[ym]), backgroundColor: "#2C4A3E", borderRadius: 4 }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: { y: { ticks: { callback: (v) => brl(v) } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => brl(c.parsed.y) } } },
+    },
+  });
 }

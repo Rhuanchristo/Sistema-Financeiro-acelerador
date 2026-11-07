@@ -18,7 +18,7 @@ import { telaInicio, desenharInicio } from "./views/inicio.js";
 import { telaLancamento } from "./views/lancamento.js";
 import { telaReceitas } from "./views/receitas.js";
 import { telaMeuPatrimonio } from "./views/meu-patrimonio.js";
-import { telaCredito } from "./views/credito.js";
+import { telaCredito, desenharCredito } from "./views/credito.js";
 import { telaProtecao } from "./views/protecao.js";
 import { telaHome, telaOpenFinance } from "./views/home.js";
 import { telaMetas } from "./views/metas.js";
@@ -231,7 +231,9 @@ async function renderPortal(ctx, secao, token) {
   if (secao === "receitas") return slot.replaceChildren(telaReceitas(ctx, dados));
   if (secao === "credito") {
     const cartas = await carregarConsorcios(ctx.email);
-    if (token === seq) slot.replaceChildren(telaCredito(ctx, cartas));
+    if (token !== seq) return;
+    slot.replaceChildren(telaCredito(ctx, cartas));
+    desenharCredito(cartas);
     return;
   }
   if (secao === "patrimonio") return slot.replaceChildren(telaMeuPatrimonio(ctx, dados));
